@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KasirBraga Icon Generator</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: Arial, sans-serif; 
+            background: #f0f0f0;
+        }
+        .icon {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 20%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .icon::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            right: 20%;
+            bottom: 60%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10%;
+        }
+        
+        .icon-72 { width: 72px; height: 72px; font-size: 24px; }
+        .icon-96 { width: 96px; height: 96px; font-size: 32px; }
+        .icon-128 { width: 128px; height: 128px; font-size: 42px; }
+        .icon-144 { width: 144px; height: 144px; font-size: 48px; }
+        .icon-152 { width: 152px; height: 152px; font-size: 50px; }
+        .icon-192 { width: 192px; height: 192px; font-size: 64px; }
+        .icon-384 { width: 384px; height: 384px; font-size: 128px; }
+        .icon-512 { width: 512px; height: 512px; font-size: 170px; }
+        
+        .shortcut-icon {
+            background: linear-gradient(135deg, #10b981, #047857);
+            width: 96px;
+            height: 96px;
+            border-radius: 20%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        h2 { 
+            color: #1f2937; 
+            margin-top: 40px; 
+        }
+        
+        .instructions {
+            background: #fef3c7;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h3>📸 Cara Membuat Icon PWA:</h3>
+        <ol>
+            <li>Screenshot setiap icon di bawah dengan ukuran yang tepat</li>
+            <li>Simpan dengan nama: icon-72x72.png, icon-96x96.png, dst.</li>
+            <li>Simpan shortcut icons dengan nama: shortcut-cashier.png, shortcut-reports.png</li>
+            <li>Letakkan semua file di folder <code>public/icons/</code></li>
+        </ol>
+    </div>
+
+    <h2>🏪 Main App Icons</h2>
+    <div class="icon icon-72">KB</div>
+    <div class="icon icon-96">KB</div>
+    <div class="icon icon-128">KB</div>
+    <div class="icon icon-144">KB</div>
+    <div class="icon icon-152">KB</div>
+    <div class="icon icon-192">KB</div>
+    <div class="icon icon-384">KB</div>
+    <div class="icon icon-512">KB</div>
+
+    <h2>🔗 Shortcut Icons</h2>
+    <div class="shortcut-icon">💰<br>KASIR</div>
+    <div class="shortcut-icon">📊<br>LAPORAN</div>
+
+    <div style="margin-top: 40px; padding: 20px; background: #e5f3ff; border-radius: 8px;">
+        <h3>💡 Tips:</h3>
+        <ul>
+            <li>Gunakan browser developer tools untuk screenshot dengan ukuran exact</li>
+            <li>Atau gunakan online icon generator dengan text "KB" dan warna biru #3b82f6</li>
+            <li>Format harus PNG untuk kompatibilitas terbaik</li>
+            <li>Icon akan otomatis terload oleh PWA setelah diletakkan di folder yang benar</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('KasirBraga PWA Icon Generator');
+        console.log('Icon sizes needed: 72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512');
+        console.log('Shortcut sizes needed: 96x96');
+    </script>
+</body>
+</html> 

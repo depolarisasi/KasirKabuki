@@ -58,10 +58,16 @@
                             <div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                                  wire:click="addToCart({{ $product->id }})">
                                 <div class="card-body p-4">
-                                    <div class="flex items-center justify-center bg-primary/10 rounded-lg h-16 mb-3">
-                                        <span class="text-2xl font-bold text-primary">
-                                            {{ strtoupper(substr($product->name, 0, 2)) }}
-                                        </span>
+                                    <div class="flex items-center justify-center bg-primary/10 rounded-lg h-16 mb-3 overflow-hidden">
+                                        @if($product->photo)
+                                            <img src="{{ $product->photo_url }}" 
+                                                 alt="{{ $product->name }}"
+                                                 class="w-full h-full object-cover rounded-lg" />
+                                        @else
+                                            <span class="text-2xl font-bold text-primary">
+                                                {{ strtoupper(substr($product->name, 0, 2)) }}
+                                            </span>
+                                        @endif
                                     </div>
                                     
                                     <h3 class="font-semibold text-sm text-center mb-2 line-clamp-2">
@@ -464,6 +470,39 @@
                     </div>
                 </div>
 
+                <!-- Payment Amount Input (Cash Only) -->
+                @if($paymentMethod === 'cash')
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-semibold">Jumlah Uang Diterima</span>
+                        </label>
+                        <input wire:model.live="paymentAmount" 
+                               type="number" 
+                               step="1000"
+                               min="{{ $checkoutSummary['cart_totals']['final_total'] ?? 0 }}"
+                               placeholder="Masukkan jumlah uang yang diterima..."
+                               class="input input-bordered text-lg font-semibold">
+                        
+                        <!-- Kembalian Display -->
+                        @if($paymentAmount > 0)
+                            @php $kembalian = $this->kembalian; @endphp
+                            <div class="mt-3 p-3 bg-base-200 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm font-medium">Kembalian:</span>
+                                    <span class="text-lg font-bold {{ $kembalian >= 0 ? 'text-success' : 'text-error' }}">
+                                        Rp {{ number_format($kembalian, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                @if($kembalian < 0)
+                                    <div class="text-xs text-error mt-1">
+                                        Uang tidak cukup! Kurang Rp {{ number_format(abs($kembalian), 0, ',', '.') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 <!-- Notes -->
                 <div class="form-control mb-4">
                     <label class="label">
@@ -554,6 +593,25 @@
         </div>
     @endif
 </div>
+
+<!-- Floating Cart Info Element -->
+@if(!empty($cartData['cart_items']))
+    <div class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 lg:hidden">
+        <div class="bg-primary text-primary-content px-6 py-3 rounded-full shadow-lg">
+            <div class="flex items-center gap-4 text-sm font-semibold">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m4.5 0a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4z"></path>
+                    </svg>
+                    <span>{{ array_sum(array_column($cartData['cart_items'], 'quantity')) }} Item</span>
+                </div>
+                <div class="border-l border-primary-content/30 pl-4">
+                    <span>{{ 'Rp ' . number_format($cartData['cart_totals']['subtotal'] ?? 0, 0, ',', '.') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 
 <script>
     // Handle receipt window opening

@@ -15,6 +15,7 @@ class Product extends Model
         'name',
         'price',
         'category_id',
+        'photo',
     ];
 
     protected $dates = ['deleted_at'];
@@ -58,5 +59,13 @@ class Product extends Model
     public function getFormattedPriceAttribute()
     {
         return 'Rp ' . number_format($this->price, 0, ',', '.');
+    }
+
+    /**
+     * Get photo URL accessor
+     */
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo ? asset($this->photo) : null;
     }
 }

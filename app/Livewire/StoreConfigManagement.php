@@ -6,6 +6,7 @@ use App\Models\StoreSetting;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Storage;
 
 class StoreConfigManagement extends Component
 {
@@ -61,8 +62,23 @@ class StoreConfigManagement extends Component
 
             // Handle logo upload if provided
             if ($this->receipt_logo) {
-                $logoPath = $this->receipt_logo->store('receipts', 'public');
-                $data['receipt_logo_path'] = $logoPath;
+                // Delete old logo if exists
+                $currentSettings = StoreSetting::current();
+                if ($currentSettings->receipt_logo_path) {
+                    $oldLogoPath = public_path($currentSettings->receipt_logo_path);
+                    if (file_exists($oldLogoPath)) {
+                        unlink($oldLogoPath);
+                    }
+                }
+
+                // Generate unique filename
+                $filename = time() . '_' . $this->receipt_logo->getClientOriginalName();
+                
+                // Store file in public/uploads/logos directory
+                $this->receipt_logo->storeAs('', $filename, 'logos');
+                
+                // Save relative path in database
+                $data['receipt_logo_path'] = 'uploads/logos/' . $filename;
             }
 
             StoreSetting::updateSettings($data);
@@ -71,6 +87,29 @@ class StoreConfigManagement extends Component
             
         } catch (\Exception $e) {
             Alert::error('Error!', 'Gagal memperbarui konfigurasi: ' . $e->getMessage());
+        }
+    }
+
+    public function testPrint()
+    {
+        try {
+            // Generate test receipt URL with current form data
+            $testData = [
+                'store_name' => $this->store_name ?: 'Nama Toko',
+                'store_address' => $this->store_address,
+                'store_phone' => $this->store_phone,
+                'receipt_header' => $this->receipt_header,
+                'receipt_footer' => $this->receipt_footer,
+                'show_receipt_logo' => $this->show_receipt_logo,
+            ];
+
+            // Open test receipt in new window
+            $this->dispatch('open-test-receipt', ['testData' => $testData]);
+            
+            Alert::info('Test Print', 'Membuka jendela test print. Pastikan printer Anda sudah terhubung.');
+            
+        } catch (\Exception $e) {
+            Alert::error('Error!', 'Gagal membuka test print: ' . $e->getMessage());
         }
     }
 

@@ -1,20 +1,22 @@
-<div class="container mx-auto px-4 py-6">
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <!-- Header Section -->
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold">Manajemen Diskon</h1>
-                    <p class="text-base-content/70">Kelola aturan diskon produk dan transaksi untuk sistem kasir</p>
-                </div>
-                <button wire:click="openCreateModal" class="btn btn-primary">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Diskon
-                </button>
-            </div>
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header with Breadcrumb -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Manajemen Diskon</h1>
+            <p class="text-white">Kelola aturan diskon produk dan transaksi untuk sistem kasir</p>
+        </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <button wire:click="openCreateModal" class="btn btn-primary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Diskon
+            </button>
+        </div>
+    </div>
 
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
             <!-- Filter Section -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <!-- Search -->
@@ -155,10 +157,20 @@
         </div>
     </div>
 
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-end mt-6">
+        <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Kembali ke Dashboard
+        </a>
+    </div>
+
     <!-- Modal Create/Edit -->
     @if($showModal)
         <div class="modal modal-open">
-            <div class="modal-box max-w-2xl">
+            <div class="modal-box max-w-2xl bg-base-300">
                 <h3 class="font-bold text-lg mb-4">
                     {{ $isEditMode ? 'Edit Diskon' : 'Tambah Diskon Baru' }}
                 </h3>
@@ -199,27 +211,25 @@
                         <!-- Status Toggle -->
                         <div class="form-control w-full">
                             <label class="label">
-                                <span class="label-text">Status Diskon</span>
+                                <span class="label-text">Status</span>
                             </label>
-                            <div class="form-control">
-                                <label class="label cursor-pointer justify-start gap-2">
-                                    <input wire:model="is_active" type="checkbox" class="toggle toggle-success" />
-                                    <span class="label-text">{{ $is_active ? 'Aktif' : 'Nonaktif' }}</span>
-                                </label>
-                            </div>
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input wire:model="is_active" type="checkbox" class="toggle toggle-primary">
+                                <span class="label-text">{{ $is_active ? 'Aktif' : 'Nonaktif' }}</span>
+                            </label>
                         </div>
                     </div>
 
-                    <!-- Product Selection (Conditional) -->
+                    <!-- Product Selection (only for product discounts) -->
                     @if($type === 'product')
                         <div class="form-control w-full mb-4">
                             <label class="label">
                                 <span class="label-text">Produk <span class="text-error">*</span></span>
                             </label>
                             <select wire:model="product_id" class="select select-bordered w-full @error('product_id') select-error @enderror">
-                                <option value="">Pilih produk untuk diskon</option>
+                                <option value="">Pilih Produk</option>
                                 @foreach($products as $product)
-                                    <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->category->name }})</option>
+                                    <option value="{{ $product->id }}">{{ $product->name }} - Rp {{ number_format($product->price, 0, ',', '.') }}</option>
                                 @endforeach
                             </select>
                             @error('product_id')
@@ -231,11 +241,11 @@
                     @endif
 
                     <!-- Value Type and Value Row -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <!-- Value Type -->
                         <div class="form-control w-full">
                             <label class="label">
-                                <span class="label-text">Jenis Nilai <span class="text-error">*</span></span>
+                                <span class="label-text">Tipe Nilai <span class="text-error">*</span></span>
                             </label>
                             <select wire:model.live="value_type" class="select select-bordered w-full @error('value_type') select-error @enderror">
                                 <option value="percentage">Persentase (%)</option>
@@ -248,29 +258,22 @@
                             @enderror
                         </div>
 
-                        <!-- Value -->
+                        <!-- Discount Value -->
                         <div class="form-control w-full">
                             <label class="label">
                                 <span class="label-text">Nilai Diskon <span class="text-error">*</span></span>
                             </label>
                             <div class="relative">
-                                <input wire:model="value" type="number" step="0.01" min="0" 
-                                       @if($value_type === 'percentage') max="100" @endif
-                                       placeholder="{{ $value_type === 'percentage' ? '10.5' : '50000' }}" 
-                                       class="input input-bordered w-full pr-12 @error('value') input-error @enderror" />
-                                <span class="absolute right-3 top-3 text-base-content/70">
-                                    {{ $value_type === 'percentage' ? '%' : 'Rp' }}
-                                </span>
+                                @if($value_type === 'percentage')
+                                    <input wire:model="value" type="number" step="0.1" min="0" max="100" placeholder="10" 
+                                           class="input input-bordered w-full pr-8 @error('value') input-error @enderror" />
+                                    <span class="absolute right-3 top-3 text-base-content/70">%</span>
+                                @else
+                                    <span class="absolute left-3 top-3 text-base-content/70">Rp</span>
+                                    <input wire:model="value" type="number" min="0" placeholder="50000" 
+                                           class="input input-bordered w-full pl-12 @error('value') input-error @enderror" />
+                                @endif
                             </div>
-                            <label class="label">
-                                <span class="label-text-alt">
-                                    @if($value_type === 'percentage')
-                                        Masukkan nilai 0-100 untuk persentase diskon
-                                    @else
-                                        Masukkan nominal dalam rupiah
-                                    @endif
-                                </span>
-                            </label>
                             @error('value')
                                 <label class="label">
                                     <span class="label-text-alt text-error">{{ $message }}</span>
@@ -279,28 +282,19 @@
                         </div>
                     </div>
 
-                    <!-- Preview Calculation -->
-                    @if($value && is_numeric($value))
-                        <div class="alert alert-info mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <div>
-                                <div class="text-sm font-semibold">Preview Perhitungan:</div>
-                                @if($value_type === 'percentage')
-                                    <div class="text-sm">
-                                        Untuk item Rp 100.000, diskon: <strong>Rp {{ number_format(100000 * ($value / 100), 0, ',', '.') }}</strong>
-                                        <br>Total setelah diskon: <strong>Rp {{ number_format(100000 - (100000 * ($value / 100)), 0, ',', '.') }}</strong>
-                                    </div>
-                                @else
-                                    <div class="text-sm">
-                                        Diskon tetap: <strong>Rp {{ number_format($value, 0, ',', '.') }}</strong>
-                                        <br>Untuk item Rp 100.000, total: <strong>Rp {{ number_format(max(0, 100000 - $value), 0, ',', '.') }}</strong>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
+                    <!-- Description Field -->
+                    <div class="form-control w-full mb-6">
+                        <label class="label">
+                            <span class="label-text">Deskripsi</span>
+                        </label>
+                        <textarea wire:model="description" placeholder="Deskripsi diskon (opsional)" 
+                                  class="textarea textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
+                        @error('description')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
 
                     <!-- Modal Actions -->
                     <div class="modal-action">
@@ -324,12 +318,23 @@
 </div>
 
 <script>
-// JavaScript for better UX
+// SweetAlert2 for better delete confirmation UX
 document.addEventListener('DOMContentLoaded', function() {
     Livewire.on('confirm-delete', (data) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus diskon "${data.discountName}"?`)) {
-            Livewire.emit('delete', data.discountId);
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus diskon "${data[0].discountName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('delete', data[0].discountId);
+            }
+        });
     });
 });
 </script>

@@ -1,5 +1,5 @@
 <x-layouts.app>
-    <x-slot name="title">Manajemen Diskon - KasirBraga</x-slot>
+    <x-slot name="title">Konfigurasi Toko - KasirBraga</x-slot>
 
     <div class="container mx-auto py-2">
         <!-- Page Header -->
@@ -8,14 +8,14 @@
                 <ul>
                     <li><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
                     <li><a href="{{ route('admin.config') }}">Konfigurasi</a></li>
-                    <li>Diskon</li>
+                    <li>Konfigurasi Toko</li>
                 </ul>
             </div>
         </div>
 
-        <!-- Discounts Management Component -->
+        <!-- Store Config Management Component -->
         <div class="bg-base-100">
-            @livewire('discount-management')
+            @livewire('store-config-management')
         </div>
     </div>
 </x-layouts.app> 

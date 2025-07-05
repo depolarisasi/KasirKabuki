@@ -47,6 +47,20 @@ return [
             'report' => false,
         ],
 
+        'logos' => [
+            'driver' => 'local',
+            'root' => public_path('uploads/logos'),
+            'url' => env('APP_URL').'/uploads/logos',
+            'visibility' => 'public',
+        ],
+
+        'products' => [
+            'driver' => 'local',
+            'root' => public_path('uploads/products'),
+            'url' => env('APP_URL').'/uploads/products',
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

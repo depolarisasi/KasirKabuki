@@ -103,12 +103,10 @@ class CategoryManagement extends Component
             return;
         }
 
-        Alert::question('Konfirmasi Hapus', 'Apakah Anda yakin ingin menghapus kategori "' . $category->name . '"?')
-            ->showCancelButton('Batal', '#aaa')
-            ->showConfirmButton('Ya, Hapus!', '#d33')
-            ->then(function () use ($categoryId) {
-                $this->delete($categoryId);
-            });
+        $this->dispatch('confirm-delete', [
+            'categoryId' => $categoryId,
+            'categoryName' => $category->name
+        ]);
     }
 
     public function delete($categoryId)

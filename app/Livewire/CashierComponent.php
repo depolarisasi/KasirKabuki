@@ -32,6 +32,7 @@ class CashierComponent extends Component
     // Checkout modal
     public $showCheckoutModal = false;
     public $paymentMethod = 'cash';
+    public $paymentAmount = 0;
     public $checkoutNotes = '';
     public $checkoutSummary = [];
     
@@ -271,8 +272,32 @@ class CashierComponent extends Component
     public function closeCheckoutModal()
     {
         $this->showCheckoutModal = false;
-        $this->checkoutSummary = [];
+        $this->paymentMethod = 'cash';
+        $this->paymentAmount = 0;
         $this->checkoutNotes = '';
+        $this->checkoutSummary = [];
+    }
+
+    public function updatedPaymentMethod()
+    {
+        // Reset payment amount when payment method changes
+        if ($this->paymentMethod === 'qris') {
+            // For QRIS, payment amount equals final total (exact payment)
+            $this->paymentAmount = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
+        } else {
+            // For cash, reset to 0 so user can input
+            $this->paymentAmount = 0;
+        }
+    }
+
+    public function getKembalianProperty()
+    {
+        if ($this->paymentMethod === 'qris') {
+            return 0; // QRIS always exact payment
+        }
+        
+        $finalTotal = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
+        return max(0, $this->paymentAmount - $finalTotal);
     }
 
     public function completeTransaction()
@@ -319,8 +344,11 @@ class CashierComponent extends Component
     public function printReceipt()
     {
         if ($this->completedTransaction) {
-            // Open receipt in new window for printing
-            $receiptUrl = route('staf.receipt.print', $this->completedTransaction->id);
+            // Open receipt in new window for printing with payment amount for kembalian calculation
+            $receiptUrl = route('staf.receipt.print', [
+                'transaction' => $this->completedTransaction->id,
+                'payment_amount' => $this->paymentAmount
+            ]);
             $this->dispatch('open-receipt-window', ['url' => $receiptUrl]);
         }
     }

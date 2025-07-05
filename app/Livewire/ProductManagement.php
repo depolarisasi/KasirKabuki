@@ -6,12 +6,14 @@ use Livewire\Component;
 use App\Models\Product;
 use App\Models\Category;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use Livewire\Attributes\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Storage;
 
 class ProductManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -25,6 +27,11 @@ class ProductManagement extends Component
     
     #[Rule('required|exists:categories,id')]
     public $category_id = '';
+
+    #[Rule('nullable|image|max:2048')]
+    public $photo;
+
+    public $existingPhoto = null;
 
     // Component state
     public $productId = null;
@@ -73,6 +80,7 @@ class ProductManagement extends Component
         $this->description = $product->description;
         $this->price = $product->price;
         $this->category_id = $product->category_id;
+        $this->existingPhoto = $product->photo;
         $this->isEditMode = true;
         $this->showModal = true;
     }
@@ -88,6 +96,26 @@ class ProductManagement extends Component
                 'price' => $this->price,
                 'category_id' => $this->category_id,
             ];
+
+            // Handle photo upload
+            if ($this->photo) {
+                // Delete old photo if exists (for edit mode)
+                if ($this->isEditMode && $this->existingPhoto) {
+                    $oldPhotoPath = public_path($this->existingPhoto);
+                    if (file_exists($oldPhotoPath)) {
+                        unlink($oldPhotoPath);
+                    }
+                }
+
+                // Generate unique filename
+                $filename = time() . '_' . $this->photo->getClientOriginalName();
+                
+                // Store photo in public/uploads/products
+                $this->photo->storeAs('', $filename, 'products');
+                
+                // Save relative path in database
+                $data['photo'] = 'uploads/products/' . $filename;
+            }
 
             if ($this->isEditMode) {
                 $product = Product::findOrFail($this->productId);
@@ -125,6 +153,15 @@ class ProductManagement extends Component
         try {
             $product = Product::findOrFail($productId);
             $productName = $product->name;
+            
+            // Delete photo file if exists
+            if ($product->photo) {
+                $photoPath = public_path($product->photo);
+                if (file_exists($photoPath)) {
+                    unlink($photoPath);
+                }
+            }
+            
             $product->delete();
             
             Alert::success('Berhasil!', 'Produk "' . $productName . '" berhasil dihapus.');
@@ -142,7 +179,7 @@ class ProductManagement extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'description', 'price', 'category_id', 'productId', 'isEditMode']);
+        $this->reset(['name', 'description', 'price', 'category_id', 'photo', 'existingPhoto', 'productId', 'isEditMode']);
         $this->resetValidation();
     }
 

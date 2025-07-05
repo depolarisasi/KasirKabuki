@@ -1,20 +1,22 @@
-<div class="container mx-auto px-4 py-6">
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <!-- Header Section -->
-            <div class="flex justify-between items-center mb-6">
-<div>
-                    <h1 class="text-2xl font-bold">Manajemen Partner Online</h1>
-                    <p class="text-base-content/70">Kelola partner online dan komisi untuk sistem kasir</p>
-                </div>
-                <button wire:click="openCreateModal" class="btn btn-primary">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Partner
-                </button>
-            </div>
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header with Breadcrumb -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Manajemen Partner Online</h1>
+            <p class="text-white">Kelola partner online dan komisi untuk sistem kasir</p>
+        </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <button wire:click="openCreateModal" class="btn btn-primary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Partner
+            </button>
+        </div>
+    </div>
 
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
             <!-- Search Section -->
             <div class="mb-4">
                 <div class="form-control w-full max-w-xs">
@@ -115,10 +117,20 @@
         </div>
     </div>
 
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-end mt-6">
+        <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Kembali ke Dashboard
+        </a>
+    </div>
+
     <!-- Modal Create/Edit -->
     @if($showModal)
         <div class="modal modal-open">
-            <div class="modal-box">
+            <div class="modal-box bg-base-300">
                 <h3 class="font-bold text-lg mb-4">
                     {{ $isEditMode ? 'Edit Partner' : 'Tambah Partner Baru' }}
                 </h3>
@@ -194,12 +206,23 @@
 </div>
 
 <script>
-// JavaScript for better UX
+// SweetAlert2 for better delete confirmation UX
 document.addEventListener('DOMContentLoaded', function() {
     Livewire.on('confirm-delete', (data) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus partner "${data.partnerName}"?`)) {
-            Livewire.emit('delete', data.partnerId);
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus partner "${data[0].partnerName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('delete', data[0].partnerId);
+            }
+        });
     });
 });
 </script>

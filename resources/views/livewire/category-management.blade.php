@@ -1,20 +1,22 @@
-<div class="container mx-auto px-4 py-8">
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <!-- Header Section -->
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold">Manajemen Kategori</h1>
-                    <p class="text-base-content/70">Kelola kategori produk untuk sistem kasir</p>
-                </div>
-                <button wire:click="openCreateModal" class="btn btn-primary">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Kategori
-                </button>
-            </div>
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header with Breadcrumb -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Manajemen Kategori</h1>
+            <p class="text-white">Kelola kategori produk untuk sistem kasir</p>
+        </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <button wire:click="openCreateModal" class="btn btn-primary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Kategori
+            </button>
+        </div>
+    </div>
 
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
             <!-- Search Section -->
             <div class="mb-4">
                 <div class="form-control w-full max-w-xs">
@@ -99,13 +101,23 @@
             <div class="mt-4">
                 {{ $categories->links() }}
             </div>
-        </div>
+        </div> 
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-end mt-6">
+        <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Kembali ke Dashboard
+        </a>
     </div>
 
     <!-- Modal Create/Edit -->
     @if($showModal)
         <div class="modal modal-open">
-            <div class="modal-box">
+            <div class="modal-box bg-base-300">
                 <h3 class="font-bold text-lg mb-4">
                     {{ $isEditMode ? 'Edit Kategori' : 'Tambah Kategori Baru' }}
                 </h3>
@@ -131,7 +143,7 @@
                             <span class="label-text">Deskripsi</span>
                         </label>
                         <textarea wire:model="description" placeholder="Deskripsi kategori (opsional)" 
-                                  class="textarea textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
+                                  class="textarea w-full textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
                         @error('description')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
@@ -161,12 +173,23 @@
 </div>
 
 <script>
-// Simple JavaScript for better SweetAlert UX
+// SweetAlert2 for better delete confirmation UX
 document.addEventListener('DOMContentLoaded', function() {
     Livewire.on('confirm-delete', (data) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus kategori "${data.categoryName}"?`)) {
-            Livewire.emit('delete', data.categoryId);
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus kategori "${data[0].categoryName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('delete', data[0].categoryId);
+            }
+        });
     });
 });
 </script>

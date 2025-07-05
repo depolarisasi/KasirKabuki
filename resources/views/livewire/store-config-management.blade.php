@@ -1,9 +1,9 @@
-<div class="container mx-auto px-4 py-6">
+<div class="container mx-auto px-8 py-4 bg-base-200">
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">Konfigurasi Toko</h1>
-            <p class="text-gray-600">Kelola informasi toko dan pengaturan struk</p>
+            <h1 class="text-2xl font-bold text-white mb-2">Konfigurasi Toko</h1>
+            <p class="text-white">Kelola informasi toko dan pengaturan struk</p>
         </div>
         <div class="flex gap-2 mt-4 sm:mt-0">
             <button wire:click="resetToDefault" class="btn btn-ghost btn-sm">
@@ -17,7 +17,7 @@
 
     <form wire:submit="updateSettings" class="space-y-6">
         <!-- Store Information Card -->
-        <div class="card bg-base-100 shadow-lg">
+        <div class="card bg-base-300 shadow-lg">
             <div class="card-body">
                 <h2 class="card-title text-lg mb-4">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@
                             <span class="label-text font-semibold">Alamat Toko</span>
                         </label>
                         <textarea wire:model="store_address" 
-                                  class="textarea textarea-bordered h-20 @error('store_address') textarea-error @enderror" 
+                                  class="textarea w-full textarea-bordered h-20 @error('store_address') textarea-error @enderror" 
                                   placeholder="Jl. Braga No. 123, Bandung"></textarea>
                         @error('store_address')
                             <label class="label">
@@ -94,7 +94,7 @@
         </div>
 
         <!-- Receipt Configuration Card -->
-        <div class="card bg-base-100 shadow-lg">
+        <div class="card bg-base-300 shadow-lg">
             <div class="card-body">
                 <h2 class="card-title text-lg mb-4">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +111,7 @@
                             <span class="label-text-alt">Teks yang tampil di bagian atas struk</span>
                         </label>
                         <textarea wire:model="receipt_header" 
-                                  class="textarea textarea-bordered h-16 @error('receipt_header') textarea-error @enderror" 
+                                  class="textarea w-full textarea-bordered h-16 @error('receipt_header') textarea-error @enderror" 
                                   placeholder="TERIMA KASIH ATAS KUNJUNGAN ANDA"></textarea>
                         @error('receipt_header')
                             <label class="label">
@@ -127,7 +127,7 @@
                             <span class="label-text-alt">Teks yang tampil di bagian bawah struk</span>
                         </label>
                         <textarea wire:model="receipt_footer" 
-                                  class="textarea textarea-bordered h-16 @error('receipt_footer') textarea-error @enderror" 
+                                  class="textarea w-full textarea-bordered h-16 @error('receipt_footer') textarea-error @enderror" 
                                   placeholder="Selamat menikmati & sampai jumpa lagi!"></textarea>
                         @error('receipt_footer')
                             <label class="label">
@@ -165,9 +165,9 @@
                             @if($currentSettings->receipt_logo_path)
                                 <div class="mt-2">
                                     <span class="text-sm text-gray-600">Logo saat ini:</span>
-                                    <img src="{{ asset('storage/' . $currentSettings->receipt_logo_path) }}" 
-                                         alt="Current Logo" 
-                                         class="max-w-32 max-h-16 object-contain mt-1">
+                                    <img src="{{ asset($currentSettings->receipt_logo_path) }}"
+                                         alt="Current Logo"
+                                         class="mt-1 h-16 w-auto border rounded">
                                 </div>
                             @endif
                         </div>
@@ -184,6 +184,16 @@
                 </svg>
                 Kembali
             </a>
+            <button wire:click="testPrint" type="button" class="btn btn-outline btn-info">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H3a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H7a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                </svg>
+                <span wire:loading.remove wire:target="testPrint">Test Print</span>
+                <span wire:loading wire:target="testPrint">
+                    <span class="loading loading-spinner loading-sm"></span>
+                    Testing...
+                </span>
+            </button>
             <button type="submit" class="btn btn-primary">
                 <svg wire:loading wire:target="updateSettings" class="animate-spin w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -198,7 +208,7 @@
     </form>
 
     <!-- Preview Section -->
-    <div class="card bg-base-100 shadow-lg mt-6">
+    <div class="card bg-base-300 shadow-lg mt-6">
         <div class="card-body">
             <h2 class="card-title text-lg mb-4">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +222,7 @@
                 <div class="flex justify-center px-4 py-16 bg-white text-black text-sm">
                     <div class="text-center space-y-2">
                         @if($show_receipt_logo && $currentSettings->receipt_logo_path)
-                            <img src="{{ asset('storage/' . $currentSettings->receipt_logo_path) }}" 
+                            <img src="{{ asset($currentSettings->receipt_logo_path) }}" 
                                  alt="Logo" 
                                  class="max-h-12 mx-auto mb-2">
                         @endif
@@ -238,4 +248,28 @@
             </div>
         </div>
     </div>
-</div> 
+</div>
+
+<script>
+    // Handle test receipt window opening
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('open-test-receipt', (event) => {
+            // Build URL with test data parameters
+            const testData = event[0].testData;
+            const params = new URLSearchParams(testData);
+            const testUrl = '{{ route("admin.test-receipt") }}?' + params.toString();
+            
+            // Open test receipt in new window optimized for printing
+            const testWindow = window.open(
+                testUrl, 
+                'test-receipt', 
+                'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no'
+            );
+            
+            // Focus the new window
+            if (testWindow) {
+                testWindow.focus();
+            }
+        });
+    });
+</script> 

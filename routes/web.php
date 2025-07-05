@@ -5,11 +5,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StafController;
 use Illuminate\Support\Facades\Log;
 
-// Root route - redirect to dashboard (requires auth)
+// Root route - redirect directly to login
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('dashboard');
-    }
     return redirect()->route('login');
 })->name('home');
 
@@ -70,12 +67,17 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/config', [AdminController::class, 'config'])->name('config');
+    Route::get('/store-config', [AdminController::class, 'storeConfig'])->name('store-config');
+    Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
     
     // Management Pages
     Route::get('/categories', [AdminController::class, 'categories'])->name('categories');
     Route::get('/products', [AdminController::class, 'products'])->name('products');
     Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
+    
+    // Test Receipt Route
+    Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
     
     // Reports
     Route::get('/reports/sales', [AdminController::class, 'salesReport'])->name('reports.sales');

@@ -1,22 +1,24 @@
-<div class="container mx-auto px-4 py-6">
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <!-- Header Section -->
-            <div class="flex justify-between items-center mb-6">
-<div>
-                    <h1 class="text-2xl font-bold">Pencatatan Pengeluaran</h1>
-                    <p class="text-base-content/70">Kelola catatan pengeluaran harian dan bulanan</p>
-                </div>
-                <button wire:click="openCreateModal" class="btn btn-primary">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Pengeluaran
-                </button>
-            </div>
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header with Breadcrumb -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Pencatatan Pengeluaran</h1>
+            <p class="text-white">Kelola catatan pengeluaran harian dan bulanan</p>
+        </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <button wire:click="openCreateModal" class="btn btn-primary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Pengeluaran
+            </button>
+        </div>
+    </div>
 
-            <!-- Quick Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <!-- Quick Stats Card -->
+    <div class="card bg-base-300 shadow-lg mb-6">
+        <div class="card-body">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="stat bg-success/10 rounded-lg">
                     <div class="stat-figure text-success">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,7 +52,11 @@
                     <div class="stat-desc">{{ $totals['count'] }} transaksi</div>
                 </div>
             </div>
+        </div>
+    </div>
 
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
             <!-- Filter Section -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <!-- Search -->
@@ -201,7 +207,7 @@
                                             @if($search || $filterDate || $filterMonth)
                                                 Tidak ada pengeluaran yang sesuai dengan filter
                                             @else
-                                                Belum ada pengeluaran. Tambahkan pengeluaran pertama Anda!
+                                                Belum ada pengeluaran tercatat.
                                             @endif
                                         </p>
                                     </div>
@@ -219,61 +225,46 @@
         </div>
     </div>
 
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-end mt-6">
+        <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Kembali ke Dashboard
+        </a>
+    </div>
+
     <!-- Modal Create/Edit -->
     @if($showModal)
         <div class="modal modal-open">
-            <div class="modal-box">
+            <div class="modal-box bg-base-300">
                 <h3 class="font-bold text-lg mb-4">
                     {{ $isEditMode ? 'Edit Pengeluaran' : 'Tambah Pengeluaran Baru' }}
                 </h3>
                 
                 <form wire:submit="save">
-                    <!-- Date Field -->
+                    <!-- Expense Date -->
                     <div class="form-control w-full mb-4">
                         <label class="label">
                             <span class="label-text">Tanggal Pengeluaran <span class="text-error">*</span></span>
                         </label>
-                        <input wire:model="date" type="date" 
-                               class="input input-bordered w-full @error('date') input-error @enderror" />
-                        @error('date')
+                        <input wire:model="expense_date" type="date" 
+                               class="input input-bordered w-full @error('expense_date') input-error @enderror" />
+                        @error('expense_date')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </label>
                         @enderror
                     </div>
 
-                    <!-- Amount Field -->
+                    <!-- Description -->
                     <div class="form-control w-full mb-4">
-                        <label class="label">
-                            <span class="label-text">Jumlah Pengeluaran <span class="text-error">*</span></span>
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-3 text-base-content/70">Rp</span>
-                            <input wire:model="amount" type="number" step="0.01" min="1" max="99999999.99"
-                                   placeholder="150000" 
-                                   class="input input-bordered w-full pl-12 @error('amount') input-error @enderror" />
-                        </div>
-                        <label class="label">
-                            <span class="label-text-alt">Masukkan jumlah dalam rupiah. Contoh: 150000 untuk Rp 150.000</span>
-                        </label>
-                        @error('amount')
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ $message }}</span>
-                            </label>
-                        @enderror
-                    </div>
-
-                    <!-- Description Field -->
-                    <div class="form-control w-full mb-6">
                         <label class="label">
                             <span class="label-text">Deskripsi Pengeluaran <span class="text-error">*</span></span>
                         </label>
-                        <textarea wire:model="description" 
-                                  placeholder="Contoh: Beli gas untuk kompor dapur, Bayar listrik bulan ini, dll"
+                        <textarea wire:model="description" placeholder="Masukkan deskripsi pengeluaran..." 
                                   class="textarea textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
-                        <label class="label">
-                            <span class="label-text-alt">Jelaskan secara detail untuk apa pengeluaran ini</span>
-                        </label>
                         @error('description')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
@@ -281,18 +272,22 @@
                         @enderror
                     </div>
 
-                    <!-- Preview Calculation -->
-                    @if($amount && is_numeric($amount))
-                        <div class="alert alert-info mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span>
-                                Pengeluaran akan tercatat sebagai: 
-                                <strong>{{ 'Rp ' . number_format($amount, 0, ',', '.') }}</strong>
-                            </span>
+                    <!-- Amount -->
+                    <div class="form-control w-full mb-6">
+                        <label class="label">
+                            <span class="label-text">Jumlah Pengeluaran <span class="text-error">*</span></span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-base-content/70">Rp</span>
+                            <input wire:model="amount" type="number" min="0" placeholder="50000" 
+                                   class="input input-bordered w-full pl-12 @error('amount') input-error @enderror" />
                         </div>
-                    @endif
+                        @error('amount')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
 
                     <!-- Modal Actions -->
                     <div class="modal-action">
@@ -301,9 +296,6 @@
                         </button>
                         <button type="submit" class="btn btn-primary">
                             <span wire:loading.remove wire:target="save">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
                                 {{ $isEditMode ? 'Update Pengeluaran' : 'Simpan Pengeluaran' }}
                             </span>
                             <span wire:loading wire:target="save">
@@ -319,12 +311,23 @@
 </div>
 
 <script>
-// JavaScript for better UX
+// SweetAlert2 for better delete confirmation UX
 document.addEventListener('DOMContentLoaded', function() {
     Livewire.on('confirm-delete', (data) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus pengeluaran "${data.expenseDescription}" sebesar ${data.expenseAmount}?`)) {
-            Livewire.emit('delete', data.expenseId);
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus pengeluaran "${data[0].expenseDescription}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('delete', data[0].expenseId);
+            }
+        });
     });
 });
 </script>

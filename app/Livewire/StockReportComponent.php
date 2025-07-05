@@ -32,7 +32,7 @@ class StockReportComponent extends Component
     {
         // Initialize with current week data
         $this->setDatePeriod('week');
-        $this->generateReport();
+        $this->generateReport(false); // Don't show success alert on initial load
     }
 
     public function render()
@@ -65,11 +65,11 @@ class StockReportComponent extends Component
         }
 
         if ($period !== 'custom') {
-            $this->generateReport();
+            $this->generateReport(false); // Don't show success alert on automatic period change
         }
     }
 
-    public function generateReport()
+    public function generateReport($showSuccessAlert = true)
     {
         $this->isLoading = true;
 
@@ -90,7 +90,10 @@ class StockReportComponent extends Component
             // Generate stock report for date range
             $this->reportData = $this->getStockReportForRange($this->startDate, $this->endDate);
             
-            Alert::success('Berhasil!', 'Laporan stok berhasil dibuat.');
+            // Only show success alert if explicitly requested
+            if ($showSuccessAlert) {
+                Alert::success('Berhasil!', 'Laporan stok berhasil dibuat.');
+            }
             
         } catch (\Exception $e) {
             Alert::error('Error!', 'Gagal membuat laporan: ' . $e->getMessage());

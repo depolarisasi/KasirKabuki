@@ -174,11 +174,11 @@
 
 <script>
 // SweetAlert2 for better delete confirmation UX
-document.addEventListener('DOMContentLoaded', function() {
-    Livewire.on('confirm-delete', (data) => {
+document.addEventListener('livewire:init', () => {
+    Livewire.on('confirm-delete', (event) => {
         Swal.fire({
             title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus kategori "${data[0].categoryName}"?`,
+            text: `Apakah Anda yakin ingin menghapus kategori "${event.categoryName}"?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('delete', data[0].categoryId);
+                @this.call('delete', event.categoryId);
             }
         });
     });

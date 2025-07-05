@@ -31,6 +31,22 @@ class StafController extends Controller
     }
     
     /**
+     * Display transaction detail page.
+     */
+    public function transactionDetail(Transaction $transaction)
+    {
+        // Ensure user can only view their own transactions or admin can view all
+        if (!auth()->user()->hasRole('admin') && $transaction->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to transaction.');
+        }
+        
+        // Load transaction with relationships
+        $transaction->load(['user', 'partner', 'items.product']);
+        
+        return view('staf.transactions.show', compact('transaction'));
+    }
+    
+    /**
      * Display receipt print page.
      */
     public function receiptPrint(Transaction $transaction)

@@ -7,8 +7,42 @@
                     <h1 class="text-2xl font-bold">Manajemen Stok Harian</h1>
                     <p class="text-base-content/70">Kelola stok awal, akhir, dan rekonsiliasi harian</p>
                     <div class="text-sm text-base-content/60 mt-1">
-                        Tanggal: {{ Carbon\Carbon::today()->format('d F Y') }}
+                        @if($useSelectedDate)
+                            <span class="badge badge-info mr-2">Custom Date</span>
+                            Tanggal: {{ Carbon\Carbon::parse($selectedDate)->format('d F Y') }}
+                        @else
+                            Tanggal: {{ Carbon\Carbon::today()->format('d F Y') }}
+                        @endif
                     </div>
+                </div>
+                
+                <!-- Date Picker Control -->
+                <div class="flex flex-col items-end gap-3">
+                    <div class="form-control">
+                        <label class="label cursor-pointer">
+                            <span class="label-text mr-3">Gunakan Tanggal Khusus</span>
+                            <input type="checkbox" wire:model.live="useSelectedDate" class="toggle toggle-primary" />
+                        </label>
+                    </div>
+                    
+                    @if($useSelectedDate)
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Pilih Tanggal</span>
+                            </label>
+                            <input wire:model.live="selectedDate" type="date" 
+                                   class="input input-bordered input-sm w-40" />
+                        </div>
+                    @endif
+                    
+                    @if($useSelectedDate)
+                        <div class="alert alert-warning p-2 max-w-xs">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.33 0L3.5 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <span class="text-xs">Mode tanggal khusus aktif</span>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -156,7 +190,7 @@
                             otomatis.</span>
                     </div>
 
-                    <form wire:submit="inputStokAkhir">
+                    <form wire:submit="inputStokAkhir" onsubmit="console.log('Form submitted: Input Stok Akhir', this)">
                         <div class="overflow-x-auto">
                             <table class="table table-zebra w-full">
                                 <thead>
@@ -212,7 +246,8 @@
                                             <td>
                                                 <input wire:model="stockQuantities.{{ $product->id }}"
                                                     type="number" min="0" step="1" placeholder="0"
-                                                    class="input input-bordered input-sm w-24" />
+                                                    class="input input-bordered input-sm w-24"
+                                                    onchange="console.log('Stock quantity changed for product {{ $product->id }}:', this.value)" />
                                             </td>
                                             <td>
                                                 <input wire:model="notes.{{ $product->id }}" type="text"
@@ -229,7 +264,8 @@
                             <button type="button" wire:click="resetForm" class="btn btn-ghost">
                                 Reset Form
                             </button>
-                            <button type="submit" class="btn btn-warning">
+                            <button type="submit" class="btn btn-warning"
+                                    onclick="console.log('Submit button clicked for Input Stok Akhir')">
                                 <span wire:loading.remove wire:target="inputStokAkhir">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">

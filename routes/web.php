@@ -97,6 +97,9 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
     Route::get('/stock', [StafController::class, 'stock'])->name('stock');
     Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
     
+    // Transaction Management
+    Route::get('/transactions/{transaction}', [StafController::class, 'transactionDetail'])->name('transactions.show');
+    
     // Receipt Print Route
     Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
 });

@@ -282,20 +282,6 @@
                         </div>
                     </div>
 
-                    <!-- Description Field -->
-                    <div class="form-control w-full mb-6">
-                        <label class="label">
-                            <span class="label-text">Deskripsi</span>
-                        </label>
-                        <textarea wire:model="description" placeholder="Deskripsi diskon (opsional)" 
-                                  class="textarea textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
-                        @error('description')
-                            <label class="label">
-                                <span class="label-text-alt text-error">{{ $message }}</span>
-                            </label>
-                        @enderror
-                    </div>
-
                     <!-- Modal Actions -->
                     <div class="modal-action">
                         <button type="button" wire:click="closeModal" class="btn btn-ghost">
@@ -319,11 +305,11 @@
 
 <script>
 // SweetAlert2 for better delete confirmation UX
-document.addEventListener('DOMContentLoaded', function() {
-    Livewire.on('confirm-delete', (data) => {
+document.addEventListener('livewire:init', () => {
+    Livewire.on('confirm-delete', (event) => {
         Swal.fire({
             title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus diskon "${data[0].discountName}"?`,
+            text: `Apakah Anda yakin ingin menghapus diskon "${event.discountName}"?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -332,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('delete', data[0].discountId);
+                @this.call('delete', event.discountId);
             }
         });
     });

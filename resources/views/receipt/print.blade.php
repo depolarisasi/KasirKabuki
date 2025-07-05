@@ -402,12 +402,6 @@
                 </div>
             @endif
             
-            @if($transaction->partner_commission > 0)
-                <div class="total-row">
-                    <span style="text-align: right; width: 100%; display: block;">Komisi Partner: -Rp. {{ number_format($transaction->partner_commission, 0, ',', '.') }}</span>
-                </div>
-            @endif
-            
             <div class="total-row final">
                 <span style="text-align: right; width: 100%; display: block;">Total: Rp. {{ number_format($transaction->final_total, 0, ',', '.') }}</span>
             </div>

@@ -20,6 +20,10 @@ class StockManagement extends Component
     public $stockQuantities = [];
     public $notes = [];
     
+    // Date selection for stock operations
+    public $selectedDate = '';
+    public $useSelectedDate = false;
+    
     // Date filter for reports
     public $reportDate = '';
 
@@ -33,13 +37,17 @@ class StockManagement extends Component
     public function mount()
     {
         $this->reportDate = Carbon::today()->format('Y-m-d');
+        $this->selectedDate = Carbon::today()->format('Y-m-d');
         $this->initializeFormData();
     }
 
     public function render()
     {
         $products = Product::with('category')->get();
-        $productStatus = $this->stockService->getProductsNeedingStockInput();
+        $targetDate = $this->useSelectedDate ? Carbon::parse($this->selectedDate) : Carbon::today();
+        
+        // Get product status based on selected date
+        $productStatus = $this->getProductsNeedingStockInputForDate($targetDate);
         
         // Get reconciliation data if on report tab
         $reconciliation = [];
@@ -52,7 +60,8 @@ class StockManagement extends Component
         return view('livewire.stock-management', [
             'products' => $products,
             'productStatus' => $productStatus,
-            'reconciliation' => $reconciliation
+            'reconciliation' => $reconciliation,
+            'targetDate' => $targetDate
         ]);
     }
 
@@ -128,6 +137,13 @@ class StockManagement extends Component
 
     public function inputStokAkhir()
     {
+        // Debug logging
+        \Log::info('inputStokAkhir called', [
+            'stockQuantities' => $this->stockQuantities,
+            'notes' => $this->notes,
+            'user_id' => auth()->id()
+        ]);
+
         // Validate that at least one product is selected with quantity
         $hasInput = false;
         foreach ($this->stockQuantities as $productId => $quantity) {
@@ -138,6 +154,7 @@ class StockManagement extends Component
         }
 
         if (!$hasInput) {
+            \Log::warning('inputStokAkhir: No input provided');
             Alert::error('Error!', 'Pilih minimal satu produk dan masukkan kuantitas stok akhir.');
             return;
         }
@@ -150,6 +167,12 @@ class StockManagement extends Component
             foreach ($this->stockQuantities as $productId => $quantity) {
                 if ($quantity !== '' && $quantity >= 0) {
                     try {
+                        \Log::info('inputStokAkhir: Processing product', [
+                            'product_id' => $productId,
+                            'quantity' => $quantity,
+                            'notes' => $this->notes[$productId] ?? null
+                        ]);
+
                         $result = $this->stockService->inputStockAkhir(
                             $productId,
                             auth()->id(),
@@ -157,15 +180,31 @@ class StockManagement extends Component
                             $this->notes[$productId] ?: null
                         );
                         
+                        \Log::info('inputStokAkhir: Success for product', [
+                            'product_id' => $productId,
+                            'result' => $result
+                        ]);
+                        
                         $successCount++;
                         $totalDifference += abs($result['difference']);
                         
                     } catch (\Exception $e) {
                         $product = Product::find($productId);
                         $errors[] = $product->name . ': ' . $e->getMessage();
+                        \Log::error('inputStokAkhir: Error for product', [
+                            'product_id' => $productId,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
                     }
                 }
             }
+
+            \Log::info('inputStokAkhir: Complete', [
+                'success_count' => $successCount,
+                'total_difference' => $totalDifference,
+                'errors' => $errors
+            ]);
 
             if ($successCount > 0) {
                 $message = 'Stok akhir berhasil diinput untuk ' . $successCount . ' produk.';
@@ -181,6 +220,10 @@ class StockManagement extends Component
             }
 
         } catch (\Exception $e) {
+            \Log::error('inputStokAkhir: Fatal error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             Alert::error('Error!', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
@@ -224,5 +267,37 @@ class StockManagement extends Component
     public function getProductExpectedStock($productId)
     {
         return $this->stockService->calculateExpectedStock($productId);
+    }
+
+    public function toggleDateSelection()
+    {
+        $this->useSelectedDate = !$this->useSelectedDate;
+    }
+
+    public function getProductsNeedingStockInputForDate($date)
+    {
+        $products = Product::with('category')->get();
+        $needingInput = [];
+
+        foreach ($products as $product) {
+            $hasStockIn = StockLog::forProduct($product->id)
+                ->where('type', 'in')
+                ->whereDate('created_at', $date)
+                ->exists();
+                
+            $hasStockOut = StockLog::forProduct($product->id)
+                ->where('type', 'adjustment')
+                ->whereDate('created_at', $date)
+                ->exists();
+
+            $needingInput[] = [
+                'product' => $product,
+                'needs_stock_in' => !$hasStockIn,
+                'needs_stock_out' => !$hasStockOut,
+                'current_stock' => $this->stockService->getCurrentStock($product->id)
+            ];
+        }
+
+        return $needingInput;
     }
 }

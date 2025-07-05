@@ -69,7 +69,7 @@ class StockService
 
             // If there's a difference, log it as adjustment
             if ($difference != 0) {
-                StockLog::create([
+                $adjustmentLog = StockLog::create([
                     'product_id' => $productId,
                     'user_id' => $userId,
                     'type' => 'adjustment',

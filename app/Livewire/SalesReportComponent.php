@@ -5,11 +5,13 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Services\ReportService;
 use Carbon\Carbon;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
 use Livewire\Attributes\Rule;
 
 class SalesReportComponent extends Component
 {
+    use Toastable;
+
     public $startDate;
     public $endDate;
     public $reportData = [];
@@ -30,7 +32,7 @@ class SalesReportComponent extends Component
     {
         // Initialize with today's data
         $this->setDatePeriod('today');
-        $this->generateReport();
+        $this->generateReportSilently();
     }
 
     public function render()
@@ -68,7 +70,7 @@ class SalesReportComponent extends Component
         }
 
         if ($period !== 'custom') {
-            $this->generateReport();
+            $this->generateReportSilently();
         }
     }
 
@@ -79,13 +81,13 @@ class SalesReportComponent extends Component
         try {
             // Validate dates
             if (!$this->startDate || !$this->endDate) {
-                Alert::error('Error!', 'Tanggal mulai dan akhir harus diisi.');
+                $this->error('Tanggal mulai dan akhir harus diisi.');
                 $this->isLoading = false;
                 return;
             }
 
             if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
-                Alert::error('Error!', 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
+                $this->error('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
                 $this->isLoading = false;
                 return;
             }
@@ -96,10 +98,96 @@ class SalesReportComponent extends Component
             // Prepare chart data
             $this->prepareChartData();
             
-            Alert::success('Berhasil!', 'Laporan berhasil dibuat.');
+            $this->success('Laporan berhasil dibuat.');
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal membuat laporan: ' . $e->getMessage());
+            $this->error('Gagal membuat laporan: ' . $e->getMessage());
+        } finally {
+            $this->isLoading = false;
+        }
+    }
+
+    public function generateReportSilently()
+    {
+        $this->isLoading = true;
+
+        try {
+            // Validate dates
+            if (!$this->startDate || !$this->endDate) {
+                $this->isLoading = false;
+                return;
+            }
+
+            if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
+                $this->isLoading = false;
+                return;
+            }
+
+            // Debug logging for sales report generation
+            \Log::info('SalesReportComponent: generateReportSilently called', [
+                'start_date' => $this->startDate,
+                'end_date' => $this->endDate,
+                'user_id' => auth()->id()
+            ]);
+
+            // Debug: Check transaction counts first
+            $totalTransactions = \App\Models\Transaction::count();
+            $completedTransactions = \App\Models\Transaction::completed()->count();
+            $todayTransactions = \App\Models\Transaction::completed()->today()->count();
+            
+            // Debug: Test different date formats
+            $startDateCarbon = \Carbon\Carbon::parse($this->startDate)->startOfDay();
+            $endDateCarbon = \Carbon\Carbon::parse($this->endDate)->endOfDay();
+            $dateRangeTransactions = \App\Models\Transaction::completed()
+                ->betweenDates($startDateCarbon, $endDateCarbon)->count();
+            
+            // Debug: Get sample transaction data for inspection
+            $sampleTransactions = \App\Models\Transaction::completed()
+                ->select(['id', 'transaction_code', 'created_at', 'final_total'])
+                ->latest()
+                ->limit(3)
+                ->get()
+                ->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'code' => $t->transaction_code,
+                        'created_at' => $t->created_at->format('Y-m-d H:i:s'),
+                        'date_only' => $t->created_at->format('Y-m-d'),
+                        'final_total' => $t->final_total
+                    ];
+                });
+            
+            \Log::info('SalesReportComponent: Transaction counts', [
+                'total_transactions' => $totalTransactions,
+                'completed_transactions' => $completedTransactions,
+                'today_completed' => $todayTransactions,
+                'date_range_completed' => $dateRangeTransactions,
+                'query_start_date' => $this->startDate,
+                'query_end_date' => $this->endDate,
+                'parsed_start_date' => $startDateCarbon->format('Y-m-d H:i:s'),
+                'parsed_end_date' => $endDateCarbon->format('Y-m-d H:i:s'),
+                'current_timezone' => config('app.timezone'),
+                'sample_transactions' => $sampleTransactions->toArray()
+            ]);
+
+            // Generate report data without alert
+            $this->reportData = $this->reportService->getSalesReport($this->startDate, $this->endDate);
+            
+            \Log::info('SalesReportComponent: Report generated', [
+                'report_summary' => $this->reportData['summary'] ?? 'No summary',
+                'total_transactions_in_report' => $this->reportData['summary']['total_transactions'] ?? 0,
+                'total_revenue_in_report' => $this->reportData['summary']['total_net_revenue'] ?? 0
+            ]);
+            
+            // Prepare chart data
+            $this->prepareChartData();
+            
+        } catch (\Exception $e) {
+            \Log::error('SalesReportComponent: generateReportSilently error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Silent failure for initial load
         } finally {
             $this->isLoading = false;
         }
@@ -186,7 +274,7 @@ class SalesReportComponent extends Component
     {
         try {
             if (empty($this->reportData)) {
-                Alert::error('Error!', 'Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.');
+                $this->error('Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.');
                 return;
             }
 
@@ -201,7 +289,12 @@ class SalesReportComponent extends Component
             return $export->download($filename);
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal mengekspor laporan: ' . $e->getMessage());
+            \Log::error('SalesReportComponent: Export error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->error('Gagal mengekspor laporan: ' . $e->getMessage());
         }
     }
 

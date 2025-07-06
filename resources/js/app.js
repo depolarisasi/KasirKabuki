@@ -1,7 +1,7 @@
 import {livewire_hot_reload} from 'virtual:livewire-hot-reload'
+import '../../vendor/masmerise/livewire-toaster/resources/js'
 import Swal from 'sweetalert2'
 
-// Expose SweetAlert2 to global scope for use in Blade templates
-window.Swal = Swal;
+window.Swal = Swal
 
-livewire_hot_reload();
+livewire_hot_reload(); 

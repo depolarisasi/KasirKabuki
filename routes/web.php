@@ -108,3 +108,12 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
+
+Route::get('/test-toaster', function () {
+    \Masmerise\Toaster\Toaster::success('Official Toaster is working!');
+    \Masmerise\Toaster\Toaster::info('Info message test');
+    \Masmerise\Toaster\Toaster::warning('Warning message test');
+    \Masmerise\Toaster\Toaster::error('Error message test');
+    
+    return view('welcome');
+})->name('test.toaster');

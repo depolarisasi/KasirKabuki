@@ -173,23 +173,27 @@
 </div>
 
 <script>
-// SweetAlert2 for better delete confirmation UX
 document.addEventListener('livewire:init', () => {
-    Livewire.on('confirm-delete', (event) => {
-        Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus kategori "${event.categoryName}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                @this.call('delete', event.categoryId);
+    // Simple alert system to replace SweetAlert
+    Livewire.on('show-simple-alert', (event) => {
+        const data = event[0];
+        let icon = '';
+        switch(data.type) {
+            case 'success': icon = '✅'; break;
+            case 'error': icon = '❌'; break;
+            case 'warning': icon = '⚠️'; break;
+            default: icon = 'ℹ️';
+        }
+        
+        alert(`${icon} ${data.title}\n\n${data.message}`);
+    });
+    
+    // Simple confirmation system
+    Livewire.on('show-delete-confirmation', (event) => {
+        const data = event[0];
+        if (confirm(`🗑️ ${data.message}`)) {
+            Livewire.find(@this.id).deleteCategory({'categoryId': data.id});
             }
-        });
     });
 });
 </script>

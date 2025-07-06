@@ -10,9 +10,12 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
 use Carbon\Carbon;
+use Masmerise\Toaster\Toastable;
 
 class StockManagement extends Component
 {
+    use Toastable;
+
     public $activeTab = 'input-awal'; // input-awal, input-akhir, laporan
     
     // Form properties for stock input
@@ -96,7 +99,8 @@ class StockManagement extends Component
         }
 
         if (!$hasInput) {
-            Alert::error('Error!', 'Pilih minimal satu produk dan masukkan kuantitas.');
+            \Log::warning('inputStokAwal: No input provided');
+            $this->error('Pilih minimal satu produk dan masukkan kuantitas.');
             return;
         }
 
@@ -122,16 +126,16 @@ class StockManagement extends Component
             }
 
             if ($successCount > 0) {
-                Alert::success('Berhasil!', 'Stok awal berhasil diinput untuk ' . $successCount . ' produk.');
-                $this->resetForm();
+                $this->success('Stok awal berhasil diinput untuk ' . $successCount . ' produk.');
             }
-
+            
             if (!empty($errors)) {
-                Alert::warning('Perhatian!', 'Beberapa produk gagal diinput: ' . implode(', ', $errors));
+                $this->warning('Beberapa produk gagal diinput: ' . implode(', ', $errors));
             }
-
+            
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan: ' . $e->getMessage());
+            \Log::error('inputStokAwal: Exception occurred', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->error('Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -141,7 +145,8 @@ class StockManagement extends Component
         \Log::info('inputStokAkhir called', [
             'stockQuantities' => $this->stockQuantities,
             'notes' => $this->notes,
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
+            'session_id' => session()->getId()
         ]);
 
         // Validate that at least one product is selected with quantity
@@ -155,7 +160,7 @@ class StockManagement extends Component
 
         if (!$hasInput) {
             \Log::warning('inputStokAkhir: No input provided');
-            Alert::error('Error!', 'Pilih minimal satu produk dan masukkan kuantitas stok akhir.');
+            $this->error('Pilih minimal satu produk dan masukkan kuantitas stok akhir.');
             return;
         }
 
@@ -163,6 +168,7 @@ class StockManagement extends Component
             $successCount = 0;
             $totalDifference = 0;
             $errors = [];
+            $successProducts = [];
 
             foreach ($this->stockQuantities as $productId => $quantity) {
                 if ($quantity !== '' && $quantity >= 0) {
@@ -188,6 +194,10 @@ class StockManagement extends Component
                         $successCount++;
                         $totalDifference += abs($result['difference']);
                         
+                        // Add product name to success list for better feedback
+                        $product = Product::find($productId);
+                        $successProducts[] = $product->name;
+                        
                     } catch (\Exception $e) {
                         $product = Product::find($productId);
                         $errors[] = $product->name . ': ' . $e->getMessage();
@@ -206,33 +216,75 @@ class StockManagement extends Component
                 'errors' => $errors
             ]);
 
+            // Show result notification with emoji for better UX
             if ($successCount > 0) {
-                $message = 'Stok akhir berhasil diinput untuk ' . $successCount . ' produk.';
+                $message = "✅ Stok akhir berhasil diinput untuk {$successCount} produk pada {$today}";
                 if ($totalDifference > 0) {
-                    $message .= ' Total selisih: ' . $totalDifference . ' unit.';
+                    $message .= " dengan total selisih {$totalDifference} unit";
                 }
-                Alert::success('Berhasil!', $message);
-                $this->resetForm();
+                $message .= '.<br><br>';
+                $message .= '<strong>Produk yang berhasil:</strong><br>';
+                $message .= '• ' . implode('<br>• ', $successProducts);
+                
+                $this->success($message);
+                
+                // Call comprehensive form reset
+                $this->forceFormReset();
             }
-
+            
             if (!empty($errors)) {
-                Alert::warning('Perhatian!', 'Beberapa produk gagal diinput: ' . implode(', ', $errors));
+                $this->warning('Beberapa produk gagal diinput:<br>• ' . implode('<br>• ', $errors));
             }
-
-        } catch (\Exception $e) {
-            \Log::error('inputStokAkhir: Fatal error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            
+            \Log::info('inputStokAkhir: Completed successfully', [
+                'success_count' => $successCount,
+                'total_difference' => $totalDifference,
+                'error_count' => count($errors)
             ]);
-            Alert::error('Error!', 'Terjadi kesalahan: ' . $e->getMessage());
+            
+        } catch (\Exception $e) {
+            \Log::error('inputStokAkhir: Exception occurred', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->error('Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
     public function resetForm()
     {
+        \Log::info('resetForm: Starting basic form reset');
+        
         $this->stockQuantities = [];
         $this->notes = [];
         $this->initializeFormData();
+        
+        // Force re-render to ensure UI updates
+        $this->dispatch('$refresh');
+        
+        \Log::info('resetForm: Basic reset completed');
+    }
+
+    public function resetFormAndRefresh()
+    {
+        \Log::info('resetFormAndRefresh: Starting form reset');
+        
+        // Clear arrays completely first
+        $this->stockQuantities = [];
+        $this->notes = [];
+        
+        // Re-initialize with clean data
+        $this->initializeFormData();
+        
+        // Dispatch events to clear Alpine.js state
+        $this->dispatch('stockInputCompleted');
+        $this->dispatch('inputsCleared');
+        
+        // Force Livewire component refresh
+        $this->dispatch('$refresh');
+        
+        \Log::info('resetFormAndRefresh: Form reset completed', [
+            'stockQuantities_count' => count($this->stockQuantities),
+            'notes_count' => count($this->notes),
+            'sample_stockQuantities' => array_slice($this->stockQuantities, 0, 3, true)
+        ]);
     }
 
     public function updatedReportDate()
@@ -250,12 +302,9 @@ class StockManagement extends Component
                 $this->reportDate ? Carbon::parse($this->reportDate) : null
             );
 
-            // For now, we'll just show success message
-            // In future iterations, we can implement actual export
-            Alert::success('Berhasil!', 'Laporan rekonsiliasi siap diexport.');
-            
+            $this->success('Laporan rekonsiliasi siap diexport.');
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat export: ' . $e->getMessage());
+            $this->error('Terjadi kesalahan saat export: ' . $e->getMessage());
         }
     }
 
@@ -299,5 +348,60 @@ class StockManagement extends Component
         }
 
         return $needingInput;
+    }
+
+    // Add method to explicitly clear all input values
+    public function clearAllInputs()
+    {
+        \Log::info('clearAllInputs: Clearing all form inputs');
+        
+        // Clear all arrays completely
+        $this->stockQuantities = [];
+        $this->notes = [];
+        
+        // Re-initialize with empty data 
+        $this->initializeFormData();
+        
+        // Dispatch multiple events to ensure UI clears
+        $this->dispatch('inputsCleared');
+        $this->dispatch('stockInputCompleted');
+        $this->dispatch('$refresh');
+        
+        \Log::info('clearAllInputs: All inputs cleared', [
+            'stockQuantities_count' => count($this->stockQuantities),
+            'notes_count' => count($this->notes)
+        ]);
+        
+        // Show feedback to user
+        $this->info('Semua input telah dikosongkan.');
+    }
+
+    public function forceFormReset()
+    {
+        \Log::info('forceFormReset: Starting comprehensive form reset');
+        
+        // Approach 1: Complete property reset
+        $this->stockQuantities = [];
+        $this->notes = [];
+        
+        // Approach 2: Re-initialize arrays
+        $this->initializeFormData();
+        
+        // Approach 3: Force Livewire to forget component state
+        $this->forgetComputed();
+        
+        // Approach 4: Dispatch multiple events for frontend clearing
+        $this->dispatch('stockFormReset');
+        $this->dispatch('stockInputCompleted');
+        $this->dispatch('inputsCleared');
+        $this->dispatch('formClearSuccess');
+        
+        // Approach 5: Force component refresh
+        $this->dispatch('$refresh');
+        
+        // Approach 7: Success notification to user
+        $this->success('Semua input telah dikosongkan.');
+        
+        \Log::info('forceFormReset: Comprehensive reset completed');
     }
 }

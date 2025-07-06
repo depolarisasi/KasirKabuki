@@ -4,12 +4,7 @@ const STATIC_CACHE = 'kasirbraga-static-v1.0.0';
 // Static assets to cache (only static files, no dynamic routes)
 const STATIC_ASSETS = [
   '/',
-  '/manifest.json',
-  // CSS files
-  '/build/assets/app.css',
-  // JS files  
-  '/build/assets/app.js',
-  // Icons
+  '/manifest.json',  
   '/icons/icon-72x72.png',
   '/icons/icon-96x96.png',
   '/icons/icon-128x128.png',
@@ -19,13 +14,7 @@ const STATIC_ASSETS = [
   '/icons/icon-384x384.png',
   '/icons/icon-512x512.png',
   '/icons/shortcut-cashier.png',
-  '/icons/shortcut-reports.png',
-  // DaisyUI CDN
-  'https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css',
-  // Chart.js CDN
-  'https://cdn.jsdelivr.net/npm/chart.js',
-  // Livewire
-  '/livewire/livewire.js'
+  '/icons/shortcut-reports.png', 
 ];
 
 // Routes that should never be cached (dynamic routes)

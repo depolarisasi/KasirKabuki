@@ -8,12 +8,13 @@ use App\Models\Category;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Illuminate\Support\Facades\Storage;
 
 class ProductManagement extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithPagination, WithFileUploads, Toastable;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -42,7 +43,7 @@ class ProductManagement extends Component
     public $search = '';
     public $categoryFilter = '';
 
-    protected $paginationTheme = 'bootstrap';
+    protected $paginationView = 'vendor.pagination.daisyui';
 
     public function render()
     {
@@ -121,38 +122,65 @@ class ProductManagement extends Component
                 $product = Product::findOrFail($this->productId);
                 $product->update($data);
                 
-                Alert::success('Berhasil!', 'Produk berhasil diperbarui.');
+                $this->success('Produk berhasil diperbarui.');
             } else {
                 Product::create($data);
                 
-                Alert::success('Berhasil!', 'Produk berhasil ditambahkan.');
+                $this->success('Produk berhasil ditambahkan.');
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menyimpan produk: ' . $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyimpan produk.';
+            $this->error('Terjadi kesalahan saat menyimpan produk: ' . $errorMessage);
         }
     }
 
     public function confirmDelete($productId)
     {
-        $product = Product::findOrFail($productId);
-        
-        // Check if product has transactions (we'll implement this in future)
-        // For now, allow delete
-        
-        $this->dispatch('confirm-delete', [
-            'productId' => $productId,
-            'productName' => $product->name
+        \Log::info('ProductManagement: confirmDelete called with LivewireAlert', [
+            'product_id' => $productId,
+            'user_id' => auth()->id()
         ]);
-    }
-
-    public function delete($productId)
-    {
+        
         try {
             $product = Product::findOrFail($productId);
+
+            \Log::info('ProductManagement: Showing delete confirmation with LivewireAlert', [
+                'product_id' => $productId,
+                'product_name' => $product->name
+            ]);
+
+            // Use LivewireAlert for confirmation
+            LivewireAlert::title('Konfirmasi Hapus')
+                ->text("Apakah Anda yakin ingin menghapus produk \"{$product->name}\"?")
+                ->asConfirm()
+                ->onConfirm('deleteProduct', ['productId' => $productId])
+                ->show();
+            
+        } catch (\Exception $e) {
+            \Log::error('ProductManagement: Error in confirmDelete', [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->error('Terjadi kesalahan saat memproses produk.');
+        }
+    }
+
+    public function deleteProduct($data)
+    {
+        try {
+            $productId = $data['productId'];
+            $product = Product::findOrFail($productId);
             $productName = $product->name;
+            
+            \Log::info('ProductManagement: Executing delete', [
+                'product_id' => $productId,
+                'product_name' => $productName
+            ]);
             
             // Delete photo file if exists
             if ($product->photo) {
@@ -164,10 +192,16 @@ class ProductManagement extends Component
             
             $product->delete();
             
-            Alert::success('Berhasil!', 'Produk "' . $productName . '" berhasil dihapus.');
+            $this->success("Produk \"{$productName}\" berhasil dihapus.");
+                
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menghapus produk.');
+            \Log::error('ProductManagement: Error in deleteProduct', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->error('Terjadi kesalahan saat menghapus produk.');
         }
     }
 

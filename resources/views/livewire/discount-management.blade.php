@@ -302,25 +302,3 @@
         </div>
     @endif
 </div>
-
-<script>
-// SweetAlert2 for better delete confirmation UX
-document.addEventListener('livewire:init', () => {
-    Livewire.on('confirm-delete', (event) => {
-        Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus diskon "${event.discountName}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                @this.call('delete', event.discountId);
-            }
-        });
-    });
-});
-</script>

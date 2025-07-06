@@ -6,13 +6,14 @@ use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class ProductTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function test_it_can_create_a_product()
+    #[Test]
+    public function it_can_create_a_product()
     {
         $category = Category::create(['name' => 'Test Category']);
         
@@ -28,17 +29,17 @@ class ProductTest extends TestCase
         $this->assertEquals($category->id, $product->category_id);
     }
 
-    /** @test */
-    public function test_it_has_fillable_attributes()
+    #[Test]
+    public function it_has_fillable_attributes()
     {
         $product = new Product();
-        $expected = ['name', 'price', 'category_id'];
+        $expected = ['name', 'price', 'category_id', 'photo'];
         
         $this->assertEquals($expected, $product->getFillable());
     }
 
-    /** @test */
-    public function test_it_belongs_to_category()
+    #[Test]
+    public function it_belongs_to_category()
     {
         $category = Category::create(['name' => 'Test Category']);
         $product = Product::factory()->create(['category_id' => $category->id]);
@@ -47,8 +48,8 @@ class ProductTest extends TestCase
         $this->assertEquals($category->id, $product->category->id);
     }
 
-    /** @test */
-    public function test_it_can_be_soft_deleted()
+    #[Test]
+    public function it_can_be_soft_deleted()
     {
         $product = Product::factory()->create();
         $productId = $product->id;
@@ -59,8 +60,8 @@ class ProductTest extends TestCase
         $this->assertNotNull($product->fresh()->deleted_at);
     }
 
-    /** @test */
-    public function test_price_is_cast_to_decimal()
+    #[Test]
+    public function price_is_cast_to_decimal()
     {
         $product = new Product();
         $casts = $product->getCasts();
@@ -68,8 +69,8 @@ class ProductTest extends TestCase
         $this->assertEquals('decimal:2', $casts['price']);
     }
 
-    /** @test */
-    public function test_it_has_formatted_price_attribute()
+    #[Test]
+    public function it_has_formatted_price_attribute()
     {
         $product = Product::factory()->create(['price' => 15000]);
         

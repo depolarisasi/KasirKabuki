@@ -6,11 +6,12 @@ use Livewire\Component;
 use App\Models\Category;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class CategoryManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, Toastable;
 
     public $title = 'Manajemen Kategori - KasirBraga';
 
@@ -29,7 +30,7 @@ class CategoryManagement extends Component
     // Search functionality
     public $search = '';
 
-    protected $paginationTheme = 'bootstrap';
+    protected $paginationView = 'vendor.pagination.daisyui';
 
     public function render()
     {
@@ -76,50 +77,92 @@ class CategoryManagement extends Component
                     'description' => $this->description,
                 ]);
                 
-                Alert::success('Berhasil!', 'Kategori berhasil diperbarui.');
+                $this->success('Kategori berhasil diperbarui.');
             } else {
                 Category::create([
                     'name' => $this->name,
                     'description' => $this->description,
                 ]);
                 
-                Alert::success('Berhasil!', 'Kategori berhasil ditambahkan.');
+                $this->success('Kategori berhasil ditambahkan.');
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menyimpan kategori.');
+            $this->error('Terjadi kesalahan saat menyimpan kategori.');
         }
     }
 
     public function confirmDelete($categoryId)
     {
-        $category = Category::findOrFail($categoryId);
-        
-        // Check if category has products
-        if ($category->products()->exists()) {
-            Alert::warning('Tidak dapat dihapus!', 'Kategori ini masih memiliki produk terkait.');
-            return;
-        }
-
-        $this->dispatch('confirm-delete', [
-            'categoryId' => $categoryId,
-            'categoryName' => $category->name
+        \Log::info('CategoryManagement: confirmDelete called with LivewireAlert', [
+            'category_id' => $categoryId,
+            'user_id' => auth()->id()
         ]);
-    }
-
-    public function delete($categoryId)
-    {
+        
         try {
             $category = Category::findOrFail($categoryId);
+            
+            // Check if category has products
+            if ($category->products()->exists()) {
+                \Log::warning('CategoryManagement: Cannot delete category with products', [
+                    'category_id' => $categoryId,
+                    'category_name' => $category->name,
+                    'products_count' => $category->products()->count()
+                ]);
+                
+                $this->warning('Kategori ini masih memiliki produk terkait dan tidak dapat dihapus.');
+                return;
+            }
+
+            \Log::info('CategoryManagement: Showing delete confirmation with LivewireAlert', [
+                'category_id' => $categoryId,
+                'category_name' => $category->name
+            ]);
+
+            // Use LivewireAlert for confirmation
+            LivewireAlert::title('Konfirmasi Hapus')
+                ->text("Apakah Anda yakin ingin menghapus kategori \"{$category->name}\"?")
+                ->asConfirm()
+                ->onConfirm('deleteCategory', ['categoryId' => $categoryId])
+                ->show();
+            
+        } catch (\Exception $e) {
+            \Log::error('CategoryManagement: Error in confirmDelete', [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->error('Terjadi kesalahan saat memproses kategori.');
+        }
+    }
+
+    public function deleteCategory($data)
+    {
+        try {
+            $categoryId = $data['categoryId'];
+            $category = Category::findOrFail($categoryId);
             $categoryName = $category->name;
+            
+            \Log::info('CategoryManagement: Executing delete', [
+                'category_id' => $categoryId,
+                'category_name' => $categoryName
+            ]);
+            
             $category->delete();
             
-            Alert::success('Berhasil!', 'Kategori "' . $categoryName . '" berhasil dihapus.');
+            $this->success("Kategori \"{$categoryName}\" berhasil dihapus.");
+                
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menghapus kategori.');
+            \Log::error('CategoryManagement: Error in deleteCategory', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $this->error('Terjadi kesalahan saat menghapus kategori.');
         }
     }
 

@@ -6,6 +6,7 @@ export default {
     content: [
         './resources/views/**/*.blade.php',
         './resources/**/*.js', 
+        './vendor/masmerise/livewire-toaster/resources/views/*.blade.php', 
     ],
     plugins: [forms, daisyui],
     daisyui: {

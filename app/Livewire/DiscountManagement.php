@@ -5,13 +5,15 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Discount;
 use App\Models\Product;
+use App\Models\Category;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class DiscountManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, Toastable;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -39,7 +41,7 @@ class DiscountManagement extends Component
     public $filterType = '';
     public $filterStatus = '';
 
-    protected $paginationTheme = 'bootstrap';
+    protected $paginationView = 'vendor.pagination.daisyui';
 
     public function rules()
     {
@@ -130,17 +132,17 @@ class DiscountManagement extends Component
                 $discount = Discount::findOrFail($this->discountId);
                 $discount->update($data);
                 
-                Alert::success('Berhasil!', 'Diskon berhasil diperbarui.');
+                $this->success('Diskon berhasil diperbarui.');
             } else {
                 Discount::create($data);
                 
-                Alert::success('Berhasil!', 'Diskon berhasil ditambahkan.');
+                $this->success('Diskon berhasil ditambahkan.');
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menyimpan diskon: ' . $e->getMessage());
+            $this->error('Terjadi kesalahan saat menyimpan diskon: ' . $e->getMessage());
         }
     }
 
@@ -151,33 +153,75 @@ class DiscountManagement extends Component
             $discount->update(['is_active' => !$discount->is_active]);
             
             $status = $discount->is_active ? 'diaktifkan' : 'dinonaktifkan';
-            Alert::success('Berhasil!', 'Diskon "' . $discount->name . '" berhasil ' . $status . '.');
+            $this->success('Diskon "' . $discount->name . '" berhasil ' . $status . '.');
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat mengubah status diskon.');
+            $this->error('Terjadi kesalahan saat mengubah status diskon.');
         }
     }
 
     public function confirmDelete($discountId)
     {
-        $discount = Discount::findOrFail($discountId);
-        
-        $this->dispatch('confirm-delete', [
-            'discountId' => $discountId,
-            'discountName' => $discount->name
+        \Log::info('DiscountManagement: confirmDelete called with LivewireAlert', [
+            'discount_id' => $discountId,
+            'user_id' => auth()->id()
         ]);
-    }
-
-    public function delete($discountId)
-    {
+        
         try {
             $discount = Discount::findOrFail($discountId);
+            
+            \Log::info('DiscountManagement: Showing delete confirmation with LivewireAlert', [
+                'discount_id' => $discountId,
+                'discount_name' => $discount->name
+            ]);
+
+            // Use LivewireAlert for confirmation
+            LivewireAlert::title('Konfirmasi Hapus')
+                ->text("Apakah Anda yakin ingin menghapus diskon \"{$discount->name}\"?")
+                ->asConfirm()
+                ->onConfirm('deleteDiscount', ['discountId' => $discountId])
+                ->show();
+            
+        } catch (\Exception $e) {
+            \Log::error('DiscountManagement: Error in confirmDelete', [
+                'discount_id' => $discountId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat memproses diskon.')
+                ->error()
+                ->show();
+        }
+    }
+
+    public function deleteDiscount($data)
+    {
+        try {
+            $discountId = $data['discountId'];
+            $discount = Discount::findOrFail($discountId);
             $discountName = $discount->name;
+            
+            \Log::info('DiscountManagement: Executing delete', [
+                'discount_id' => $discountId,
+                'discount_name' => $discountName
+            ]);
+            
             $discount->delete();
             
-            Alert::success('Berhasil!', 'Diskon "' . $discountName . '" berhasil dihapus.');
+            $this->success("Diskon \"{$discountName}\" berhasil dihapus.");
+                
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menghapus diskon.');
+            \Log::error('DiscountManagement: Error in deleteDiscount', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat menghapus diskon.')
+                ->error()
+                ->show();
         }
     }
 

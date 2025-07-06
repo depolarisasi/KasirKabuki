@@ -10,9 +10,12 @@ use App\Models\Discount;
 use App\Services\TransactionService;
 use Livewire\Attributes\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
 
 class CashierComponent extends Component
 {
+    use Toastable;
+
     public $title = 'Kasir - KasirBraga';
     
     public $selectedCategory = 'all';
@@ -97,9 +100,10 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->addToCart($productId, 1);
-            Alert::success('Berhasil!', 'Produk ditambahkan ke keranjang.');
+            $this->success('Produk ditambahkan ke keranjang.');
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menambahkan produk ke keranjang.';
+            $this->error($errorMessage);
         }
     }
 
@@ -109,10 +113,11 @@ class CashierComponent extends Component
             $this->transactionService->updateCartQuantity($productId, $quantity);
             
             if ($quantity <= 0) {
-                Alert::info('Info', 'Produk dihapus dari keranjang.');
+                $this->info('Produk dihapus dari keranjang.');
             }
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memperbarui keranjang.';
+            $this->error($errorMessage);
         }
     }
 
@@ -120,9 +125,10 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->removeFromCart($productId);
-            Alert::info('Info', 'Produk dihapus dari keranjang.');
+            $this->info('Produk dihapus dari keranjang.');
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus produk dari keranjang.';
+            $this->error($errorMessage);
         }
     }
 
@@ -130,9 +136,10 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->clearCart();
-            Alert::success('Berhasil!', 'Keranjang dikosongkan.');
+            $this->success('Keranjang dikosongkan.');
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat mengosongkan keranjang.';
+            $this->error($errorMessage);
         }
     }
 
@@ -144,7 +151,7 @@ class CashierComponent extends Component
             foreach ($appliedDiscounts as $discountId => $discountData) {
                 $this->transactionService->removeDiscount($discountId);
             }
-            Alert::info('Info', 'Diskon dihapus karena pesanan online tidak dapat menggunakan diskon.');
+            $this->info('Diskon dihapus karena pesanan online tidak dapat menggunakan diskon.');
         }
         
         // Reset partner selection
@@ -154,7 +161,7 @@ class CashierComponent extends Component
     public function openDiscountModal()
     {
         if ($this->orderType === 'online') {
-            Alert::error('Error!', 'Diskon tidak dapat diterapkan pada pesanan online.');
+            $this->error('Diskon tidak dapat diterapkan pada pesanan online.');
             return;
         }
         
@@ -171,10 +178,11 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->applyDiscount($discountId, $this->orderType);
-            Alert::success('Berhasil!', 'Diskon berhasil diterapkan.');
+            $this->success('Diskon berhasil diterapkan.');
             $this->closeDiscountModal();
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon.';
+            $this->error($errorMessage);
         }
     }
 
@@ -182,9 +190,10 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->removeDiscount($discountId);
-            Alert::info('Info', 'Diskon dihapus dari keranjang.');
+            $this->info('Diskon dihapus dari keranjang.');
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus diskon.';
+            $this->error($errorMessage);
         }
     }
 
@@ -192,7 +201,7 @@ class CashierComponent extends Component
     {
         $cart = $this->transactionService->getCart();
         if (empty($cart)) {
-            Alert::error('Error!', 'Keranjang kosong, tidak ada yang disimpan.');
+            $this->error('Keranjang kosong, tidak ada yang disimpan.');
             return;
         }
         
@@ -209,16 +218,17 @@ class CashierComponent extends Component
     public function saveOrder()
     {
         if (empty(trim($this->saveOrderName))) {
-            Alert::error('Error!', 'Nama pesanan tidak boleh kosong.');
+            $this->error('Nama pesanan tidak boleh kosong.');
             return;
         }
         
         try {
             $this->transactionService->saveOrder($this->saveOrderName);
-            Alert::success('Berhasil!', 'Pesanan berhasil disimpan dengan nama "' . $this->saveOrderName . '".');
+            $this->success('Pesanan berhasil disimpan dengan nama "' . $this->saveOrderName . '".');
             $this->closeSaveOrderModal();
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyimpan pesanan.';
+            $this->error($errorMessage);
         }
     }
 
@@ -236,10 +246,11 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->loadSavedOrder($orderName);
-            Alert::success('Berhasil!', 'Pesanan "' . $orderName . '" berhasil dimuat.');
+            $this->success('Pesanan "' . $orderName . '" berhasil dimuat.');
             $this->closeLoadOrderModal();
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memuat pesanan.';
+            $this->error($errorMessage);
         }
     }
 
@@ -247,9 +258,10 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->deleteSavedOrder($orderName);
-            Alert::success('Berhasil!', 'Pesanan "' . $orderName . '" berhasil dihapus.');
+            $this->success('Pesanan "' . $orderName . '" berhasil dihapus.');
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus pesanan.';
+            $this->error($errorMessage);
         }
     }
 
@@ -265,7 +277,52 @@ class CashierComponent extends Component
             $this->showCheckoutModal = true;
             
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memproses checkout.';
+            $this->error($errorMessage);
+        }
+    }
+
+    public function openCheckoutModal()
+    {
+        try {
+            $cart = $this->transactionService->getCart();
+            if (empty($cart)) {
+                $this->error('Keranjang kosong, tidak ada yang di-checkout.');
+                return;
+            }
+            
+            \Log::info('CashierComponent: openCheckoutModal called', [
+                'cart_count' => count($cart),
+                'order_type' => $this->orderType,
+                'selected_partner' => $this->selectedPartner
+            ]);
+            
+            // Use getCheckoutSummary for consistent data structure with proceedToCheckout
+            $this->checkoutSummary = $this->transactionService->getCheckoutSummary($this->orderType, $this->selectedPartner);
+            
+            \Log::info('CashierComponent: getCheckoutSummary result', [
+                'checkout_summary_structure' => array_keys($this->checkoutSummary),
+                'cart_totals_exists' => isset($this->checkoutSummary['cart_totals']),
+                'cart_totals_keys' => isset($this->checkoutSummary['cart_totals']) ? array_keys($this->checkoutSummary['cart_totals']) : null,
+                'subtotal_exists' => isset($this->checkoutSummary['cart_totals']['subtotal']),
+                'final_total_exists' => isset($this->checkoutSummary['cart_totals']['final_total'])
+            ]);
+            
+            $this->paymentMethod = 'cash'; // Reset to default
+            $this->paymentAmount = 0;
+            $this->checkoutNotes = '';
+            $this->showCheckoutModal = true;
+            
+            \Log::info('CashierComponent: openCheckoutModal completed successfully');
+            
+        } catch (\Exception $e) {
+            \Log::error('CashierComponent: openCheckoutModal error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat membuka modal checkout.';
+            $this->error($errorMessage);
         }
     }
 
@@ -305,8 +362,23 @@ class CashierComponent extends Component
         try {
             // Validate payment method
             if (!in_array($this->paymentMethod, ['cash', 'qris'])) {
-                Alert::error('Error!', 'Metode pembayaran tidak valid.');
+                $this->error('Metode pembayaran tidak valid.');
                 return;
+            }
+
+            // Validate payment amount for cash transactions
+            if ($this->paymentMethod === 'cash') {
+                $finalTotal = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
+                
+                if ($this->paymentAmount <= 0) {
+                    $this->error('Jumlah uang yang diterima harus diisi.');
+                    return;
+                }
+                
+                if ($this->paymentAmount < $finalTotal) {
+                    $this->error('Jumlah uang yang diterima kurang dari total pembayaran.');
+                    return;
+                }
             }
 
             // Complete the transaction
@@ -316,22 +388,22 @@ class CashierComponent extends Component
                 $this->paymentMethod,
                 $this->checkoutNotes
             );
-
-            Alert::success('Berhasil!', 'Transaksi berhasil diselesaikan. Kode transaksi: ' . $transaction->transaction_code);
             
-            // Store completed transaction for receipt
-            $this->completedTransaction = $transaction->load(['user', 'partner', 'items.product']);
-            
-            // Reset form
-            $this->closeCheckoutModal();
-            $this->orderType = 'dine_in';
-            $this->selectedPartner = null;
-            
-            // Show receipt modal
+            // Show success notification and receipt modal
+            $this->completedTransaction = $transaction;
             $this->showReceiptModal = true;
-
+            $this->closeCheckoutModal();
+            
+            $this->success('Transaksi berhasil diselesaikan dengan kode: ' . $transaction->transaction_code);
+            
         } catch (\Exception $e) {
-            Alert::error('Error!', $e->getMessage());
+            \Log::error('CashierComponent: Error in completeTransaction', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyelesaikan transaksi.';
+            $this->error($errorMessage);
         }
     }
 

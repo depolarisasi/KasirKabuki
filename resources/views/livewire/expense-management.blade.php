@@ -18,16 +18,16 @@
     <!-- Quick Stats Card -->
     <div class="card bg-base-300 shadow-lg mb-6">
         <div class="card-body">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div class="stat bg-success/10 rounded-lg">
                     <div class="stat-figure text-success">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
                     </div>
-                    <div class="stat-title">Pengeluaran Hari Ini</div>
-                    <div class="stat-value text-success">{{ 'Rp ' . number_format($stats['today'], 0, ',', '.') }}</div>
-                    <div class="stat-desc">{{ Carbon\Carbon::today()->format('d F Y') }}</div>
+                    <div class="stat-title text-sm sm:text-base">Pengeluaran Hari Ini</div>
+                    <div class="stat-value text-success text-lg sm:text-xl lg:text-2xl xl:text-3xl break-words">{{ 'Rp ' . number_format($stats['today'], 0, ',', '.') }}</div>
+                    <div class="stat-desc text-xs sm:text-sm">{{ Carbon\Carbon::today()->format('d F Y') }}</div>
                 </div>
 
                 <div class="stat bg-info/10 rounded-lg">
@@ -36,20 +36,20 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                     </div>
-                    <div class="stat-title">Pengeluaran Bulan Ini</div>
-                    <div class="stat-value text-info">{{ 'Rp ' . number_format($stats['this_month'], 0, ',', '.') }}</div>
-                    <div class="stat-desc">{{ Carbon\Carbon::now()->format('F Y') }}</div>
+                    <div class="stat-title text-sm sm:text-base">Pengeluaran Bulan Ini</div>
+                    <div class="stat-value text-info text-lg sm:text-xl lg:text-2xl xl:text-3xl break-words">{{ 'Rp ' . number_format($stats['this_month'], 0, ',', '.') }}</div>
+                    <div class="stat-desc text-xs sm:text-sm">{{ Carbon\Carbon::now()->format('F Y') }}</div>
                 </div>
 
-                <div class="stat bg-warning/10 rounded-lg">
+                <div class="stat bg-warning/10 rounded-lg md:col-span-2 lg:col-span-1">
                     <div class="stat-figure text-warning">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
                         </svg>
                     </div>
-                    <div class="stat-title">Total Filtered</div>
-                    <div class="stat-value text-warning">{{ 'Rp ' . number_format($totals['amount'], 0, ',', '.') }}</div>
-                    <div class="stat-desc">{{ $totals['count'] }} transaksi</div>
+                    <div class="stat-title text-sm sm:text-base">Total Filtered</div>
+                    <div class="stat-value text-warning text-lg sm:text-xl lg:text-2xl xl:text-3xl break-words">{{ 'Rp ' . number_format($totals['amount'], 0, ',', '.') }}</div>
+                    <div class="stat-desc text-xs sm:text-sm">{{ $totals['count'] }} transaksi</div>
                 </div>
             </div>
         </div>
@@ -249,9 +249,9 @@
                         <label class="label">
                             <span class="label-text">Tanggal Pengeluaran <span class="text-error">*</span></span>
                         </label>
-                        <input wire:model="expense_date" type="date" 
-                               class="input input-bordered w-full @error('expense_date') input-error @enderror" />
-                        @error('expense_date')
+                        <input wire:model="date" type="date" 
+                               class="input input-bordered w-full @error('date') input-error @enderror" />
+                        @error('date')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </label>
@@ -309,25 +309,3 @@
         </div>
     @endif
 </div>
-
-<script>
-// SweetAlert2 for better delete confirmation UX
-document.addEventListener('DOMContentLoaded', function() {
-    Livewire.on('confirm-delete', (data) => {
-        Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus pengeluaran "${data[0].expenseDescription}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                @this.call('delete', data[0].expenseId);
-            }
-        });
-    });
-});
-</script>

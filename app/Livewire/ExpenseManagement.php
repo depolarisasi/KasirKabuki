@@ -6,12 +6,13 @@ use Livewire\Component;
 use App\Models\Expense;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Carbon\Carbon;
 
 class ExpenseManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, Toastable;
 
     // Form properties
     #[Rule('required|numeric|min:1|max:99999999.99')]
@@ -34,7 +35,7 @@ class ExpenseManagement extends Component
     public $filterMonth = '';
     public $filterYear = '';
 
-    protected $paginationTheme = 'bootstrap';
+    protected $paginationView = 'vendor.pagination.daisyui';
 
     public function mount()
     {
@@ -114,7 +115,7 @@ class ExpenseManagement extends Component
             $this->isEditMode = true;
             $this->showModal = true;
         } else {
-            Alert::error('Error!', 'Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
+            $this->error('Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
         }
     }
 
@@ -133,59 +134,115 @@ class ExpenseManagement extends Component
             if ($this->isEditMode) {
                 $expense = Expense::findOrFail($this->expenseId);
                 
-                // Authorization check
-                if (auth()->user()->hasRole('admin') || $expense->user_id === auth()->id()) {
-                    $expense->update($data);
-                    Alert::success('Berhasil!', 'Pengeluaran berhasil diperbarui.');
-                } else {
-                    Alert::error('Error!', 'Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
+                // Check authorization for editing
+                if (!auth()->user()->hasRole('admin') && $expense->user_id !== auth()->id()) {
+                    $this->error('Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
                     return;
                 }
+                
+                $expense->update($data);
+                $this->success('Pengeluaran berhasil diperbarui.');
             } else {
                 Expense::create($data);
-                Alert::success('Berhasil!', 'Pengeluaran berhasil ditambahkan.');
+                $this->success('Pengeluaran berhasil ditambahkan.');
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menyimpan pengeluaran: ' . $e->getMessage());
+            $this->error('Terjadi kesalahan saat menyimpan pengeluaran: ' . $e->getMessage());
         }
     }
 
     public function confirmDelete($expenseId)
     {
-        $expense = Expense::findOrFail($expenseId);
+        \Log::info('ExpenseManagement: confirmDelete called with LivewireAlert', [
+            'expense_id' => $expenseId,
+            'user_id' => auth()->id()
+        ]);
         
-        // Authorization check
-        if (auth()->user()->hasRole('admin') || $expense->user_id === auth()->id()) {
-            $this->dispatch('confirm-delete', [
-                'expenseId' => $expenseId,
-                'expenseDescription' => $expense->description,
-                'expenseAmount' => $expense->formatted_amount
-            ]);
-        } else {
-            Alert::error('Error!', 'Anda tidak memiliki izin untuk menghapus pengeluaran ini.');
-        }
-    }
-
-    public function delete($expenseId)
-    {
         try {
             $expense = Expense::findOrFail($expenseId);
             
             // Authorization check
             if (auth()->user()->hasRole('admin') || $expense->user_id === auth()->id()) {
+                \Log::info('ExpenseManagement: Showing delete confirmation with LivewireAlert', [
+                    'expense_id' => $expenseId,
+                    'expense_description' => $expense->description
+                ]);
+
+                // Use LivewireAlert for confirmation
+                LivewireAlert::title('Konfirmasi Hapus')
+                    ->text("Apakah Anda yakin ingin menghapus pengeluaran \"{$expense->description}\" ({$expense->formatted_amount})?")
+                    ->asConfirm()
+                    ->onConfirm('deleteExpense', ['expenseId' => $expenseId])
+                    ->show();
+            } else {
+                \Log::warning('ExpenseManagement: Unauthorized delete attempt', [
+                    'expense_id' => $expenseId,
+                    'user_id' => auth()->id(),
+                    'expense_owner' => $expense->user_id
+                ]);
+                
+                LivewireAlert::title('Error!')
+                    ->text('Anda tidak memiliki izin untuk menghapus pengeluaran ini.')
+                    ->error()
+                    ->show();
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('ExpenseManagement: Error in confirmDelete', [
+                'expense_id' => $expenseId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat memproses pengeluaran.')
+                ->error()
+                ->show();
+        }
+    }
+
+    public function deleteExpense($data)
+    {
+        try {
+            $expenseId = $data['expenseId'];
+            $expense = Expense::findOrFail($expenseId);
+            
+            // Authorization check
+            if (auth()->user()->hasRole('admin') || $expense->user_id === auth()->id()) {
                 $expenseDescription = $expense->description;
+                
+                \Log::info('ExpenseManagement: Executing delete', [
+                    'expense_id' => $expenseId,
+                    'expense_description' => $expenseDescription
+                ]);
+                
                 $expense->delete();
                 
-                Alert::success('Berhasil!', 'Pengeluaran "' . $expenseDescription . '" berhasil dihapus.');
+                LivewireAlert::title('Berhasil!')
+                    ->text("Pengeluaran \"{$expenseDescription}\" berhasil dihapus.")
+                    ->success()
+                    ->show();
+                    
                 $this->resetPage();
             } else {
-                Alert::error('Error!', 'Anda tidak memiliki izin untuk menghapus pengeluaran ini.');
+                LivewireAlert::title('Error!')
+                    ->text('Anda tidak memiliki izin untuk menghapus pengeluaran ini.')
+                    ->error()
+                    ->show();
             }
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menghapus pengeluaran.');
+            \Log::error('ExpenseManagement: Error in deleteExpense', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat menghapus pengeluaran.')
+                ->error()
+                ->show();
         }
     }
 

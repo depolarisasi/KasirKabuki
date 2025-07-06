@@ -133,7 +133,7 @@
                                             <td>
                                                 @if ($status['needs_stock_in'])
                                                     <input wire:model="stockQuantities.{{ $status['product']->id }}"
-                                                        type="number" min="0" step="1" placeholder="0"
+                                                        type="number" min="0" step="1" 
                                                         class="input input-bordered input-sm w-24" />
                                                 @else
                                                     <span class="text-success font-semibold">✓ Selesai</span>
@@ -155,7 +155,11 @@
                         </div>
 
                         <div class="flex justify-between items-center mt-6">
-                            <button type="button" wire:click="resetForm" class="btn btn-ghost">
+                            <button type="button" wire:click="clearAllInputs" class="btn btn-ghost">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
                                 Reset Form
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -245,14 +249,51 @@
                                             </td>
                                             <td>
                                                 <input wire:model="stockQuantities.{{ $product->id }}"
-                                                    type="number" min="0" step="1" placeholder="0"
+                                                    wire:key="stock-akhir-{{ $product->id }}-{{ now()->timestamp }}"
+                                                    type="number" min="0" step="1" 
                                                     class="input input-bordered input-sm w-24"
+                                                    x-data="{ 
+                                                        clearValue() { 
+                                                            this.value = '';
+                                                            this.$el.value = '';
+                                                            $wire.set('stockQuantities.{{ $product->id }}', '');
+                                                        },
+                                                        forceReset() {
+                                                            this.value = '';
+                                                            this.$el.value = '';
+                                                            this.$el.defaultValue = '';
+                                                            $wire.stockQuantities[{{ $product->id }}] = '';
+                                                        }
+                                                    }"
+                                                    x-on:livewire:stockInputCompleted.window="clearValue()"
+                                                    x-on:livewire:inputsCleared.window="clearValue()"
+                                                    x-on:livewire:stockFormReset.window="forceReset()"
+                                                    x-on:livewire:formClearSuccess.window="forceReset()"
                                                     onchange="console.log('Stock quantity changed for product {{ $product->id }}:', this.value)" />
                                             </td>
                                             <td>
-                                                <input wire:model="notes.{{ $product->id }}" type="text"
+                                                <input wire:model="notes.{{ $product->id }}" 
+                                                    wire:key="note-akhir-{{ $product->id }}-{{ now()->timestamp }}"
+                                                    type="text"
                                                     placeholder="Catatan..."
-                                                    class="input input-bordered input-sm w-32" />
+                                                    class="input input-bordered input-sm w-32"
+                                                    x-data="{ 
+                                                        clearValue() { 
+                                                            this.value = '';
+                                                            this.$el.value = '';
+                                                            $wire.set('notes.{{ $product->id }}', '');
+                                                        },
+                                                        forceReset() {
+                                                            this.value = '';
+                                                            this.$el.value = '';
+                                                            this.$el.defaultValue = '';
+                                                            $wire.notes[{{ $product->id }}] = '';
+                                                        }
+                                                    }"
+                                                    x-on:livewire:stockInputCompleted.window="clearValue()"
+                                                    x-on:livewire:inputsCleared.window="clearValue()"
+                                                    x-on:livewire:stockFormReset.window="forceReset()"
+                                                    x-on:livewire:formClearSuccess.window="forceReset()" />
                                             </td>
                                         </tr>
                                     @endforeach
@@ -261,7 +302,11 @@
                         </div>
 
                         <div class="flex justify-between items-center mt-6">
-                            <button type="button" wire:click="resetForm" class="btn btn-ghost">
+                            <button type="button" wire:click="clearAllInputs" class="btn btn-ghost">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
                                 Reset Form
                             </button>
                             <button type="submit" class="btn btn-warning"

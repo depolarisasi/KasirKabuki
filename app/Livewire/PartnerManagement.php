@@ -6,11 +6,12 @@ use Livewire\Component;
 use App\Models\Partner;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class PartnerManagement extends Component
 {
-    use WithPagination;
+    use WithPagination, Toastable;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -27,7 +28,7 @@ class PartnerManagement extends Component
     // Search functionality
     public $search = '';
 
-    protected $paginationTheme = 'bootstrap';
+    protected $paginationView = 'vendor.pagination.daisyui';
 
     public function render()
     {
@@ -75,44 +76,86 @@ class PartnerManagement extends Component
                 $partner = Partner::findOrFail($this->partnerId);
                 $partner->update($data);
                 
-                Alert::success('Berhasil!', 'Partner berhasil diperbarui.');
+                $this->success('Partner berhasil diperbarui.');
             } else {
                 Partner::create($data);
                 
-                Alert::success('Berhasil!', 'Partner berhasil ditambahkan.');
+                $this->success('Partner berhasil ditambahkan.');
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menyimpan partner: ' . $e->getMessage());
+            $this->error('Terjadi kesalahan saat menyimpan partner: ' . $e->getMessage());
         }
     }
 
     public function confirmDelete($partnerId)
     {
-        $partner = Partner::findOrFail($partnerId);
-        
-        // Check if partner has transactions (we'll implement this in future)
-        // For now, allow delete
-        
-        $this->dispatch('confirm-delete', [
-            'partnerId' => $partnerId,
-            'partnerName' => $partner->name
+        \Log::info('PartnerManagement: confirmDelete called with LivewireAlert', [
+            'partner_id' => $partnerId,
+            'user_id' => auth()->id()
         ]);
-    }
-
-    public function delete($partnerId)
-    {
+        
         try {
             $partner = Partner::findOrFail($partnerId);
+
+            \Log::info('PartnerManagement: Showing delete confirmation with LivewireAlert', [
+                'partner_id' => $partnerId,
+                'partner_name' => $partner->name
+            ]);
+
+            // Use LivewireAlert for confirmation
+            LivewireAlert::title('Konfirmasi Hapus')
+                ->text("Apakah Anda yakin ingin menghapus partner \"{$partner->name}\"?")
+                ->asConfirm()
+                ->onConfirm('deletePartner', ['partnerId' => $partnerId])
+                ->show();
+            
+        } catch (\Exception $e) {
+            \Log::error('PartnerManagement: Error in confirmDelete', [
+                'partner_id' => $partnerId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat memproses partner.')
+                ->error()
+                ->show();
+        }
+    }
+
+    public function deletePartner($data)
+    {
+        try {
+            $partnerId = $data['partnerId'];
+            $partner = Partner::findOrFail($partnerId);
             $partnerName = $partner->name;
+            
+            \Log::info('PartnerManagement: Executing delete', [
+                'partner_id' => $partnerId,
+                'partner_name' => $partnerName
+            ]);
+            
             $partner->delete();
             
-            Alert::success('Berhasil!', 'Partner "' . $partnerName . '" berhasil dihapus.');
+            LivewireAlert::title('Berhasil!')
+                ->text("Partner \"{$partnerName}\" berhasil dihapus.")
+                ->success()
+                ->show();
+                
             $this->resetPage();
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Terjadi kesalahan saat menghapus partner.');
+            \Log::error('PartnerManagement: Error in deletePartner', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat menghapus partner.')
+                ->error()
+                ->show();
         }
     }
 

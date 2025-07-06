@@ -198,65 +198,96 @@
                         <div class="mb-4">
                             <h4 class="font-semibold text-sm mb-2">Diskon Diterapkan</h4>
                             @foreach($cartData['applied_discounts'] as $discountId => $discount)
-                                <div class="flex items-center justify-between p-2 bg-success/10 rounded-lg mb-1">
+                                <div class="flex justify-between items-center p-2 bg-warning/10 rounded-lg mb-2">
                                     <div class="flex-1">
-                                        <span class="text-sm font-semibold text-success">{{ $discount['name'] }}</span>
-                                        <span class="text-xs text-success/70 block">
-                                            {{ $discount['type'] === 'product' ? 'Diskon Produk' : 'Diskon Transaksi' }}
+                                        <span class="text-sm font-medium">{{ $discount['name'] }}</span>
+                                        <span class="text-xs text-base-content/60 block">
+                                            @if($discount['type'] === 'product')
+                                                Produk: {{ $discount['product_name'] ?? 'N/A' }}
+                                            @else
+                                                Diskon Total
+                                            @endif
                                         </span>
                                     </div>
+                                    <div class="text-right">
+                                        <span class="text-sm font-bold text-warning">
+                                            @if($discount['value_type'] === 'percentage')
+                                                -{{ $discount['value'] }}%
+                                            @else
+                                                -Rp {{ number_format($discount['value'], 0, ',', '.') }}
+                                            @endif
+                                        </span>
                                     <button wire:click="removeDiscount({{ $discountId }})" 
-                                            class="btn btn-xs btn-circle btn-ghost">
+                                                class="btn btn-xs btn-circle btn-ghost ml-2">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                         </svg>
                                     </button>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
                     @endif
 
-                    <!-- Discount Button -->
-                    @if($orderType !== 'online' && !empty($cartData['cart_items']))
-                        <button wire:click="openDiscountModal" class="btn btn-outline btn-success btn-sm w-full mb-4">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    <!-- Quick Discount Addition -->
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text font-semibold">Tambah Diskon</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <select wire:model="selectedDiscount" class="select select-bordered flex-1">
+                                <option value="">Pilih Diskon</option>
+                                @foreach($availableDiscounts as $discount)
+                                    <option value="{{ $discount->id }}">
+                                        {{ $discount->name }} 
+                                        (@if($discount->value_type === 'percentage'){{ $discount->value }}%@else Rp {{ number_format($discount->value, 0, ',', '.') }}@endif)
+                                    </option>
+                                @endforeach
+                            </select>
+                            <button wire:click="addDiscount" 
+                                    class="btn btn-outline btn-sm"
+                                    @if(!$selectedDiscount) disabled @endif>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
-                            Tambah Diskon
                         </button>
-                    @endif
+                        </div>
+                    </div>
 
-                    <!-- Cart Summary -->
+                    <!-- Cart Totals -->
                     @if(!empty($cartData['cart_items']))
-                        <div class="border-t pt-4">
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span>Subtotal ({{ $cartData['total_items'] }} item)</span>
-                                    <span>{{ 'Rp ' . number_format($cartData['subtotal'], 0, ',', '.') }}</span>
+                        <div class="border-t pt-4 space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span>Subtotal:</span>
+                                <span>{{ 'Rp ' . number_format($cartData['subtotal'] ?? 0, 0, ',', '.') }}</span>
                                 </div>
                                 
-                                @if($cartData['total_discount'] > 0)
-                                    <div class="flex justify-between text-success">
-                                        <span>Total Diskon</span>
+                            @if(($cartData['total_discount'] ?? 0) > 0)
+                                <div class="flex justify-between text-sm text-warning">
+                                    <span>Total Diskon:</span>
                                         <span>-{{ 'Rp ' . number_format($cartData['total_discount'], 0, ',', '.') }}</span>
                                     </div>
                                 @endif
                                 
-                                <div class="flex justify-between text-lg font-bold border-t pt-2">
-                                    <span>Total</span>
-                                    <span class="text-primary">{{ 'Rp ' . number_format($cartData['final_total'], 0, ',', '.') }}</span>
+                            @if($orderType === 'online' && $selectedPartner && ($cartData['commission'] ?? 0) > 0)
+                                <div class="flex justify-between text-sm text-info">
+                                    <span>Komisi Partner:</span>
+                                    <span>{{ 'Rp ' . number_format($cartData['commission'], 0, ',', '.') }}</span>
                                 </div>
+                            @endif
+                            
+                            <div class="flex justify-between text-lg font-bold border-t pt-2">
+                                <span>Total:</span>
+                                <span class="text-primary">{{ 'Rp ' . number_format($cartData['final_total'] ?? 0, 0, ',', '.') }}</span>
                             </div>
                         </div>
 
                         <!-- Checkout Button -->
-                        <button wire:click="proceedToCheckout" 
-                                class="btn btn-primary w-full mt-4"
-                                @if($orderType === 'online' && !$selectedPartner) disabled @endif>
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button wire:click="openCheckoutModal" class="btn btn-primary w-full mt-4">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
-                            Lanjut ke Pembayaran
+                            Checkout ({{ array_sum(array_column($cartData['cart_items'], 'quantity')) }} item)
                         </button>
                     @endif
                 </div>
@@ -264,46 +295,55 @@
         </div>
     </div>
 
-    <!-- Discount Modal -->
-    @if($showDiscountModal)
+    <!-- Load Order Modal -->
+    @if($showLoadOrderModal)
         <div class="modal modal-open">
             <div class="modal-box">
-                <h3 class="font-bold text-lg mb-4">Pilih Diskon</h3>
+                <h3 class="font-bold text-lg mb-4">Muat Pesanan Tersimpan</h3>
                 
+                @if($savedOrders->count() > 0)
                 <div class="space-y-3 max-h-64 overflow-y-auto">
-                    @forelse($availableDiscounts as $discount)
-                        <div class="card bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
-                             wire:click="applyDiscount({{ $discount->id }})">
-                            <div class="card-body p-4">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold">{{ $discount->name }}</h4>
-                                        <p class="text-sm text-base-content/70">
-                                            {{ $discount->type === 'product' ? 'Diskon Produk' : 'Diskon Transaksi' }}
-                                            @if($discount->type === 'product' && $discount->product)
-                                                - {{ $discount->product->name }}
-                                            @endif
+                        @foreach($savedOrders as $order)
+                            <div class="border border-base-300 rounded-lg p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="font-semibold">{{ $order->order_name }}</h4>
+                                        <p class="text-sm text-base-content/60">
+                                            {{ $order->created_at->format('d M Y, H:i') }}
                                         </p>
                                     </div>
                                     <div class="text-right">
-                                        <div class="badge badge-success">
-                                            @if($discount->value_type === 'percentage')
-                                                {{ $discount->value }}%
-                                            @else
-                                                Rp {{ number_format($discount->value, 0, ',', '.') }}
-                                            @endif
-                                        </div>
+                                        <p class="text-sm font-bold">{{ $order->formatted_total }}</p>
+                                        <p class="text-xs text-base-content/60">{{ $order->items_count }} item</p>
                                     </div>
                                 </div>
+                                
+                                <div class="flex gap-2 mt-3">
+                                    <button wire:click="loadOrder({{ $order->id }})" 
+                                            class="btn btn-primary btn-sm flex-1">
+                                        Muat Pesanan
+                                    </button>
+                                    <button wire:click="deleteSavedOrder({{ $order->id }})" 
+                                            class="btn btn-error btn-outline btn-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
+                        @endforeach
                         </div>
-                    @empty
-                        <p class="text-center text-base-content/70 py-8">Tidak ada diskon yang tersedia</p>
-                    @endforelse
+                @else
+                    <div class="text-center py-8">
+                        <svg class="w-12 h-12 text-base-content/30 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-base-content/70">Belum ada pesanan tersimpan</p>
                 </div>
+                @endif
 
                 <div class="modal-action">
-                    <button wire:click="closeDiscountModal" class="btn">Tutup</button>
+                    <button wire:click="closeLoadOrderModal" class="btn btn-ghost">Tutup</button>
                 </div>
             </div>
         </div>
@@ -319,56 +359,45 @@
                     <label class="label">
                         <span class="label-text">Nama Pesanan</span>
                     </label>
-                    <input wire:model="saveOrderName" type="text" 
-                           placeholder="Contoh: Meja 5, Pelanggan A, dll" 
-                           class="input input-bordered w-full" />
+                    <input wire:model="orderName" 
+                           type="text" 
+                           placeholder="Masukkan nama untuk pesanan ini..."
+                           class="input input-bordered" />
+                    @error('orderName') 
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ $message }}</span>
+                        </label>
+                    @enderror
                 </div>
+
+                <!-- Order Summary -->
+                @if(!empty($cartData['cart_items']))
+                    <div class="bg-base-200 rounded-lg p-3 mb-4">
+                        <h4 class="font-semibold text-sm mb-2">Ringkasan Pesanan</h4>
+                        <div class="space-y-1">
+                            @foreach($cartData['cart_items'] as $item)
+                                <div class="flex justify-between text-xs">
+                                    <span>{{ $item['quantity'] }}x {{ $item['name'] }}</span>
+                                    <span>{{ 'Rp ' . number_format($item['quantity'] * $item['price'], 0, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                            </div>
+                        <div class="border-t mt-2 pt-2 flex justify-between font-semibold text-sm">
+                            <span>Total:</span>
+                            <span>{{ 'Rp ' . number_format($cartData['final_total'] ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                </div>
+                @endif
 
                 <div class="modal-action">
                     <button wire:click="closeSaveOrderModal" class="btn btn-ghost">Batal</button>
-                    <button wire:click="saveOrder" class="btn btn-primary">Simpan</button>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <!-- Load Order Modal -->
-    @if($showLoadOrderModal)
-        <div class="modal modal-open">
-            <div class="modal-box">
-                <h3 class="font-bold text-lg mb-4">Muat Pesanan Tersimpan</h3>
-                
-                <div class="space-y-3 max-h-64 overflow-y-auto">
-                    @forelse($savedOrders as $orderName => $order)
-                        <div class="card bg-base-200">
-                            <div class="card-body p-4">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold">{{ $order['name'] }}</h4>
-                                        <p class="text-sm text-base-content/70">
-                                            {{ count($order['cart']) }} item - 
-                                            {{ 'Rp ' . number_format($order['totals']['final_total'], 0, ',', '.') }}
-                                        </p>
-                                        <p class="text-xs text-base-content/50">
-                                            {{ $order['created_at']->format('d/m/Y H:i') }}
-                                        </p>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button wire:click="loadSavedOrder('{{ $orderName }}')" 
-                                                class="btn btn-sm btn-primary">Muat</button>
-                                        <button wire:click="deleteSavedOrder('{{ $orderName }}')" 
-                                                class="btn btn-sm btn-error">Hapus</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-center text-base-content/70 py-8">Tidak ada pesanan tersimpan</p>
-                    @endforelse
-                </div>
-
-                <div class="modal-action">
-                    <button wire:click="closeLoadOrderModal" class="btn">Tutup</button>
+                    <button wire:click="saveOrder" class="btn btn-primary">
+                        <span wire:loading.remove wire:target="saveOrder">Simpan Pesanan</span>
+                        <span wire:loading wire:target="saveOrder">
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Menyimpan...
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -378,67 +407,90 @@
     @if($showCheckoutModal)
         <div class="modal modal-open">
             <div class="modal-box max-w-2xl">
-                <h3 class="font-bold text-lg mb-4">Konfirmasi Pembayaran</h3>
+                <h3 class="font-bold text-lg mb-4">Checkout Transaksi</h3>
                 
                 <!-- Order Summary -->
-                <div class="bg-base-200 rounded-lg p-4 mb-4">
-                    <h4 class="font-semibold mb-3">Ringkasan Pesanan</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left: Items List -->
+                    <div>
+                        <h4 class="font-semibold mb-3">Detail Pesanan</h4>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                            @foreach($checkoutSummary['cart_totals']['cart_items'] ?? [] as $item)
+                                <div class="flex justify-between items-start p-3 bg-base-200 rounded-lg">
+                                    <div class="flex-1">
+                                        <h5 class="font-medium text-sm">{{ $item['name'] }}</h5>
+                                        <p class="text-xs text-base-content/60">{{ $item['category'] }}</p>
+                                        <p class="text-sm">
+                                            {{ $item['quantity'] }}x {{ 'Rp ' . number_format($item['price'], 0, ',', '.') }}
+                                        </p>
+                                    </div>
+                                    <div class="text-right">
+                                        @php $itemSubtotal = $item['price'] * $item['quantity']; @endphp
+                                        <p class="font-semibold">{{ 'Rp ' . number_format($itemSubtotal, 0, ',', '.') }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                     
+                    <!-- Right: Totals & Order Info -->
+                    <div>
+                        <div class="bg-base-200 rounded-lg p-4 mb-4">
+                            <h4 class="font-semibold mb-3">Informasi Pesanan</h4>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between">
-                            <span>Jenis Pesanan</span>
-                            <span class="font-semibold">
-                                @if($orderType === 'dine_in') Makan di Tempat
-                                @elseif($orderType === 'take_away') Bawa Pulang
-                                @else Online
-                                @endif
-                            </span>
+                                    <span>Jenis Pesanan:</span>
+                                    <span class="font-medium">{{ $orderTypeLabels[$orderType] ?? $orderType }}</span>
                         </div>
                         
-                        @if(isset($checkoutSummary['partner']))
+                                @if($orderType === 'online' && $selectedPartner)
+                                    @php $partnerData = $partners->find($selectedPartner); @endphp
                             <div class="flex justify-between">
-                                <span>Partner Online</span>
-                                <span class="font-semibold">{{ $checkoutSummary['partner']->name }}</span>
+                                        <span>Partner:</span>
+                                        <span class="font-medium">{{ $partnerData->name ?? 'N/A' }}</span>
                             </div>
                         @endif
                         
                         <div class="flex justify-between">
-                            <span>Total Item</span>
-                            <span>{{ $checkoutSummary['cart_totals']['total_items'] ?? 0 }} item</span>
+                                    <span>Total Item:</span>
+                                    <span class="font-medium">{{ $checkoutSummary['cart_totals']['total_items'] ?? 0 }}</span>
+                                </div>
+                            </div>
                         </div>
                         
+                        <!-- Totals Breakdown -->
+                        <div class="space-y-2">
                         <div class="flex justify-between">
-                            <span>Subtotal</span>
+                                <span>Subtotal:</span>
                             <span>{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['subtotal'] ?? 0, 0, ',', '.') }}</span>
                         </div>
                         
                         @if(($checkoutSummary['cart_totals']['total_discount'] ?? 0) > 0)
-                            <div class="flex justify-between text-success">
-                                <span>Total Diskon</span>
-                                <span>-{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['total_discount'], 0, ',', '.') }}</span>
+                                <div class="flex justify-between text-warning">
+                                    <span>Total Diskon:</span>
+                                    <span>-{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['total_discount'] ?? 0, 0, ',', '.') }}</span>
                             </div>
                         @endif
                         
-                        @if(($checkoutSummary['partner_commission'] ?? 0) > 0)
-                            <div class="flex justify-between text-warning">
-                                <span>Komisi Partner ({{ $checkoutSummary['partner']->commission_rate }}%)</span>
-                                <span>-{{ 'Rp ' . number_format($checkoutSummary['partner_commission'], 0, ',', '.') }}</span>
+                            @if($orderType === 'online' && ($checkoutSummary['partner_commission'] ?? 0) > 0)
+                                <div class="flex justify-between text-info">
+                                    <span>Komisi Partner:</span>
+                                    <span>{{ 'Rp ' . number_format($checkoutSummary['partner_commission'] ?? 0, 0, ',', '.') }}</span>
                             </div>
                         @endif
                         
-                        <div class="border-t pt-2">
-                            <div class="flex justify-between text-lg font-bold">
-                                <span>Total Pembayaran</span>
+                            <div class="flex justify-between text-lg font-bold border-t pt-2">
+                                <span>Total Akhir:</span>
                                 <span class="text-primary">{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['final_total'] ?? 0, 0, ',', '.') }}</span>
                             </div>
+                            
+                            @if($orderType === 'online' && $selectedPartner && ($checkoutSummary['partner_commission'] ?? 0) > 0)
+                                <div class="flex justify-between text-sm text-base-content/70 mt-2">
+                                    <span>Net Revenue Toko:</span>
+                                    <span>{{ 'Rp ' . number_format($checkoutSummary['net_revenue'] ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            @endif
                         </div>
-                        
-                        @if(($checkoutSummary['partner_commission'] ?? 0) > 0)
-                            <div class="flex justify-between text-sm text-info">
-                                <span>Pendapatan Bersih</span>
-                                <span>{{ 'Rp ' . number_format($checkoutSummary['net_revenue'], 0, ',', '.') }}</span>
-                            </div>
-                        @endif
                     </div>
                 </div>
 
@@ -516,7 +568,11 @@
                 <!-- Action Buttons -->
                 <div class="modal-action">
                     <button wire:click="closeCheckoutModal" class="btn btn-ghost">Batal</button>
-                    <button wire:click="completeTransaction" class="btn btn-primary">
+                    <button wire:click="completeTransaction" 
+                            class="btn btn-primary"
+                            @if($paymentMethod === 'cash' && ($paymentAmount <= 0 || $paymentAmount < ($checkoutSummary['cart_totals']['final_total'] ?? 0)))
+                                disabled
+                            @endif>
                         <span wire:loading.remove wire:target="completeTransaction">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -571,33 +627,40 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="modal-action">
-                    <button wire:click="closeReceiptModal" class="btn btn-ghost btn-sm">
+                <div class="modal-action flex-col sm:flex-row gap-2 mt-6">
+                    <!-- Primary button group (stacked on mobile, row on desktop) -->
+                    <div class="flex flex-col sm:flex-row w-full gap-2 order-2 sm:order-1">
+                        <button wire:click="printReceipt" class="btn btn-primary btn-sm flex-1 sm:flex-initial">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H3a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H7a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
                         </svg>
-                        Kembali ke Kasir
+                            Print Struk
                     </button>
+                        
                     <a href="{{ route('staf.transactions.show', $completedTransaction->id) }}" 
-                       class="btn btn-outline btn-sm">
+                           class="btn btn-outline btn-sm flex-1 sm:flex-initial">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         Detail Transaksi
                     </a>
-                    <button wire:click="printReceipt" class="btn btn-primary btn-sm">
+                    </div>
+                    
+                    <!-- Secondary button (close) -->
+                    <div class="order-1 sm:order-2">
+                        <button wire:click="closeReceiptModal" class="btn btn-ghost btn-sm w-full sm:w-auto">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H3a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H7a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                         </svg>
-                        Print Struk
+                            Kembali ke Kasir
                     </button>
+                    </div>
                 </div>
             </div>
         </div>
     @endif
-</div>
 
-<!-- Floating Cart Info Element -->
+    <!-- Floating Cart Info Element (Mobile Only) -->
 @if(!empty($cartData['cart_items']))
     <div class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 lg:hidden">
         <div class="bg-primary text-primary-content px-6 py-3 rounded-full shadow-lg">
@@ -609,13 +672,14 @@
                     <span>{{ array_sum(array_column($cartData['cart_items'], 'quantity')) }} Item</span>
                 </div>
                 <div class="border-l border-primary-content/30 pl-4">
-                    <span>{{ 'Rp ' . number_format($cartData['cart_totals']['subtotal'] ?? 0, 0, ',', '.') }}</span>
+                        <span>{{ 'Rp ' . number_format($cartData['final_total'] ?? 0, 0, ',', '.') }}</span>
                 </div>
             </div>
         </div>
     </div>
 @endif
 
+    <!-- JavaScript Section -->
 <script>
     // Handle receipt window opening
     document.addEventListener('livewire:init', () => {
@@ -634,3 +698,4 @@
         });
     });
 </script>
+</div>

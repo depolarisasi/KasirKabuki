@@ -50,7 +50,7 @@ class ReportService
                 'net_revenue' => $transactions->sum('final_total'),
                 'avg_order_value' => $transactions->count() > 0 ? $transactions->sum('final_total') / $transactions->count() : 0
             ];
-        });
+        })->toArray(); // FIXED: Convert Collection to array to prevent modification issues
 
         // Revenue by payment method
         $revenueByPaymentMethod = $allTransactions->groupBy('payment_method')->map(function ($transactions) {
@@ -59,7 +59,7 @@ class ReportService
                 'total_revenue' => $transactions->sum('final_total'),
                 'percentage' => 0 // Will be calculated later
             ];
-        });
+        })->toArray(); // FIXED: Convert Collection to array before modification
 
         // Calculate percentages for payment methods
         if ($totalNetRevenue > 0) {
@@ -135,7 +135,7 @@ class ReportService
                 'order_count' => $item->order_count,
                 'avg_quantity_per_order' => $item->order_count > 0 ? $item->total_quantity / $item->order_count : 0
             ];
-        });
+        })->toArray(); // FIXED: Convert Collection to array
     }
 
     /**
@@ -171,7 +171,7 @@ class ReportService
                 'order_count' => $category->order_count,
                 'percentage' => $totalRevenue > 0 ? ($category->total_revenue / $totalRevenue) * 100 : 0
             ];
-        });
+        })->toArray(); // FIXED: Convert Collection to array
     }
 
     /**
@@ -247,7 +247,7 @@ class ReportService
                     'net_revenue' => $transaction->net_revenue,
                     'avg_order_value' => $transaction->order_count > 0 ? $transaction->gross_revenue / $transaction->order_count : 0
                 ];
-            });
+            })->toArray(); // FIXED: Convert Collection to array
     }
 
     /**

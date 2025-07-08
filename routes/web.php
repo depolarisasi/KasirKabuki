@@ -16,29 +16,12 @@ require __DIR__.'/auth.php';
 // PIN Login Route - Available for guest users
 Route::get('/pin-login', App\Livewire\PinLogin::class)
     ->middleware('guest')->name('pin-login');
-
-// Transaction Page Routes - Accessible to staff, admin, and investor
-Route::middleware(['auth', 'role:staf|admin|investor'])->group(function () {
-    Route::get('/transactions', App\Livewire\TransactionPageComponent::class)->name('transactions');
-});
+ 
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        
-        // Debug logging untuk troubleshoot role issues
-        Log::info('Dashboard Route Debug', [
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'user_email' => $user->email,
-            'user_role_column' => $user->role ?? 'NULL',
-            'hasRole_admin' => $user->hasRole('admin'),
-            'hasRole_staf' => $user->hasRole('staf'),
-            'hasRole_investor' => $user->hasRole('investor'),
-            'all_roles' => $user->roles ? $user->roles->pluck('name')->toArray() : [],
-            'roles_count' => $user->roles ? $user->roles->count() : 0
-        ]);
-        
+         
         // Redirect based on user role
         if ($user->hasRole('admin')) {
             Log::info('Redirecting admin user to admin.dashboard');
@@ -103,7 +86,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 // Staff Routes - Protected by auth and staf or admin role
-Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->group(function () {
+Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('staf.')->group(function () {
     // Dashboard redirect
     Route::get('/dashboard', function () {
         return redirect()->route('staf.cashier');
@@ -115,6 +98,9 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
     Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
     
     // Transaction Management
+    
+    Route::get('transactions', App\Livewire\TransactionPageComponent::class)->name('transactions');
+
     Route::get('/transactions/{transaction}', [StafController::class, 'transactionDetail'])->name('transactions.show');
     
     // Receipt Print Route

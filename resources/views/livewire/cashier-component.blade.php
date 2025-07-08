@@ -6,9 +6,19 @@
                 <div class="card-body">
                     <!-- Header with Search and Actions -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-<div>
+                        <div>
                             <h1 class="text-2xl font-bold">Point of Sales</h1>
                             <p class="text-base-content/70">Pilih produk untuk menambahkan ke keranjang</p>
+                            @if($currentLoadedOrder)
+                                <div class="flex items-center gap-2 mt-2">
+                                    <div class="badge badge-info badge-sm">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        Pesanan dimuat: {{ $currentLoadedOrder }}
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                         
                         <div class="flex gap-2 w-full md:w-auto">
@@ -21,9 +31,17 @@
                             
                             <button wire:click="openSaveOrderModal" class="btn btn-outline btn-warning btn-sm">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    @if($currentLoadedOrder)
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    @endif
                                 </svg>
-                                Simpan Pesanan
+                                @if($currentLoadedOrder)
+                                    Update Pesanan
+                                @else
+                                    Simpan Pesanan
+                                @endif
                             </button>
                         </div>
                     </div>
@@ -390,7 +408,7 @@
                                         </p>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-sm font-bold">Rp {{ number_format($order['final_total'], 0, ',', '.') }}</p>
+                                        <p class="text-sm font-bold">Rp {{ number_format($order['cart_totals']['final_total'] ?? 0, 0, ',', '.') }}</p>
                                         <p class="text-xs text-base-content/60">{{ count($order['cart']) }} item</p>
                                     </div>
                                 </div>
@@ -430,22 +448,55 @@
     @if($showSaveOrderModal)
         <div class="modal modal-open">
             <div class="modal-box">
-                <h3 class="font-bold text-lg mb-4">Simpan Pesanan</h3>
+                @if($currentLoadedOrder)
+                    <h3 class="font-bold text-lg mb-4">Update atau Simpan Pesanan</h3>
+                    
+                    <!-- Current Loaded Order Info -->
+                    <div class="bg-info/10 rounded-lg p-3 mb-4">
+                        <div class="flex items-center gap-2 text-info">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-semibold">Pesanan dimuat: "{{ $currentLoadedOrder }}"</span>
+                        </div>
+                        <p class="text-xs text-info/70 mt-1">Anda dapat memperbarui pesanan ini atau menyimpan sebagai pesanan baru.</p>
+                    </div>
+                @else
+                    <h3 class="font-bold text-lg mb-4">Simpan Pesanan</h3>
+                @endif
                 
-                <div class="form-control mb-4">
-                    <label class="label">
-                        <span class="label-text">Nama Pesanan</span>
-                    </label>
-                    <input wire:model="orderName" 
-                           type="text" 
-                           placeholder="Masukkan nama untuk pesanan ini..."
-                           class="input input-bordered" />
-                    @error('orderName') 
+                @if(!$currentLoadedOrder)
+                    <div class="form-control mb-4">
                         <label class="label">
-                            <span class="label-text-alt text-error">{{ $message }}</span>
+                            <span class="label-text">Nama Pesanan</span>
                         </label>
-                    @enderror
-                </div>
+                        <input wire:model="orderName" 
+                               type="text" 
+                               placeholder="Masukkan nama untuk pesanan ini..."
+                               class="input input-bordered" />
+                        @error('orderName') 
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
+                @else
+                    <!-- Show input for new order name when updating -->
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text">Nama Pesanan Baru (untuk simpan sebagai pesanan baru)</span>
+                        </label>
+                        <input wire:model="orderName" 
+                               type="text" 
+                               placeholder="Masukkan nama untuk pesanan baru..."
+                               class="input input-bordered" />
+                        @error('orderName') 
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
+                @endif
 
                 <!-- Order Summary -->
                 @if(!empty($cartData['cart_items']))
@@ -468,13 +519,52 @@
 
                 <div class="modal-action">
                     <button wire:click="closeSaveOrderModal" class="btn btn-ghost">Batal</button>
-                    <button wire:click="saveOrder" class="btn btn-primary">
-                        <span wire:loading.remove wire:target="saveOrder">Simpan Pesanan</span>
-                        <span wire:loading wire:target="saveOrder">
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Menyimpan...
-                        </span>
-                    </button>
+                    
+                    @if($currentLoadedOrder)
+                        <!-- Update existing order button -->
+                        <button wire:click="updateSavedOrder" class="btn btn-warning">
+                            <span wire:loading.remove wire:target="updateSavedOrder">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Update "{{ $currentLoadedOrder }}"
+                            </span>
+                            <span wire:loading wire:target="updateSavedOrder">
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Mengupdate...
+                            </span>
+                        </button>
+                        
+                        <!-- Save as new order button (only if orderName is filled) -->
+                        <button wire:click="saveOrder" 
+                                class="btn btn-primary"
+                                @if(empty(trim($orderName))) disabled @endif>
+                            <span wire:loading.remove wire:target="saveOrder">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Simpan Sebagai Baru
+                            </span>
+                            <span wire:loading wire:target="saveOrder">
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    @else
+                        <!-- Regular save button for new orders -->
+                        <button wire:click="saveOrder" class="btn btn-primary">
+                            <span wire:loading.remove wire:target="saveOrder">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Simpan Pesanan
+                            </span>
+                            <span wire:loading wire:target="saveOrder">
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Menyimpan...
+                            </span>
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>

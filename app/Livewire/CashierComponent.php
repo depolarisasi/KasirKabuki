@@ -34,6 +34,7 @@ class CashierComponent extends Component
     public $saveOrderName = '';
     public $orderName = '';
     public $showLoadOrderModal = false;
+    public $currentLoadedOrder = null; // Track currently loaded order name for updates
     
     // Discount modal
     public $showDiscountModal = false;
@@ -186,6 +187,7 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->clearCart();
+            $this->currentLoadedOrder = null; // Reset loaded order when cart is cleared
             LivewireAlert::title('Berhasil!')
             ->text('Keranjang dikosongkan.')
             ->success()
@@ -438,6 +440,7 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->loadSavedOrder($orderName);
+            $this->currentLoadedOrder = $orderName; // Track the loaded order
             LivewireAlert::title('Berhasil!')
             ->text('Pesanan "' . $orderName . '" berhasil dimuat.')
             ->success()
@@ -445,6 +448,33 @@ class CashierComponent extends Component
             $this->closeLoadOrderModal();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memuat pesanan.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
+    
+    public function updateSavedOrder()
+    {
+        try {
+            if (!$this->currentLoadedOrder) {
+                LivewireAlert::title('Error!')
+                ->text('Tidak ada pesanan yang dimuat untuk diupdate.')
+                ->error()
+                ->show();
+                return;
+            }
+            
+            $this->transactionService->updateSavedOrder($this->currentLoadedOrder);
+            LivewireAlert::title('Berhasil!')
+            ->text('Pesanan "' . $this->currentLoadedOrder . '" berhasil diperbarui dengan perubahan terbaru.')
+            ->success()
+            ->show();
+            $this->closeSaveOrderModal();
+            $this->currentLoadedOrder = null; // Reset after update
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memperbarui pesanan.';
             LivewireAlert::title('Terjadi kesalahan!')
                 ->text($errorMessage)
                 ->error()
@@ -642,6 +672,7 @@ class CashierComponent extends Component
             $this->completedTransaction = $transaction;
             $this->showReceiptModal = true;
             $this->closeCheckoutModal();
+            $this->currentLoadedOrder = null; // Reset loaded order when transaction is completed
             
             LivewireAlert::title('Berhasil!')
                 ->text('Transaksi berhasil diselesaikan dengan kode: ' . $transaction->transaction_code)

@@ -263,7 +263,31 @@ class SalesReportComponent extends Component
         // Safely get daily sales data as array
         $dailySales = collect($this->reportData['daily_sales'] ?? [])->toArray();
         $revenueByCategory = collect($this->reportData['revenue_by_category'] ?? [])->toArray();
-        $revenueByOrderType = collect($this->reportData['revenue_by_order_type'] ?? [])->toArray();
+        
+        // FIXED: Handle revenueByOrderType properly - it's associative, not numerically indexed
+        $revenueByOrderTypeRaw = $this->reportData['revenue_by_order_type'] ?? [];
+        
+        // Convert associative Collection to safe array format
+        $revenueByOrderType = [];
+        $orderTypeLabels = [];
+        $orderTypeData = [];
+        
+        foreach ($revenueByOrderTypeRaw as $orderType => $data) {
+            $revenueByOrderType[] = [
+                'order_type' => $orderType,
+                'net_revenue' => $data['net_revenue'] ?? 0,
+                'count' => $data['count'] ?? 0
+            ];
+            
+            // Prepare chart data
+            $orderTypeLabels[] = match($orderType) {
+                'dine_in' => 'Makan di Tempat',
+                'take_away' => 'Bawa Pulang', 
+                'online' => 'Online',
+                default => $orderType
+            };
+            $orderTypeData[] = $data['net_revenue'] ?? 0;
+        }
         
         // Daily sales trend chart data - using array operations
         $this->chartData = [
@@ -302,19 +326,12 @@ class SalesReportComponent extends Component
                 ]
             ],
             
-            // Order type distribution - using safe array handling
+            // FIXED: Order type distribution - using properly structured data
             'order_type_distribution' => [
-                'labels' => array_map(function($type) {
-                    return match($type) {
-                        'dine_in' => 'Makan di Tempat',
-                        'take_away' => 'Bawa Pulang',
-                        'online' => 'Online',
-                        default => $type
-                    };
-                }, array_keys($revenueByOrderType)),
+                'labels' => $orderTypeLabels,
                 'datasets' => [
                     [
-                        'data' => array_values(array_column($revenueByOrderType, 'net_revenue')),
+                        'data' => $orderTypeData,
                         'backgroundColor' => ['#3B82F6', '#10B981', '#F59E0B']
                     ]
                 ]

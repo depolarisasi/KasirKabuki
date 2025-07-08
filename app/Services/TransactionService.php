@@ -542,6 +542,114 @@ class TransactionService
     }
 
     /**
+     * Update existing saved order with current cart
+     */
+    public function updateSavedOrder($orderName)
+    {
+        try {
+            \DB::beginTransaction();
+            
+            $savedOrders = Session::get('saved_orders', []);
+            
+            if (!isset($savedOrders[$orderName])) {
+                throw new \Exception('Pesanan tersimpan tidak ditemukan.');
+            }
+            
+            $cart = Session::get('cart', []);
+            if (empty($cart)) {
+                throw new \Exception('Keranjang kosong. Tidak ada yang bisa disimpan.');
+            }
+            
+            $cartTotals = $this->getCartTotals();
+            $oldOrder = $savedOrders[$orderName];
+            $stockReservations = [];
+            
+            // Return stock from old order first
+            if (isset($oldOrder['stock_reservations'])) {
+                $stockService = app(\App\Services\StockService::class);
+                
+                foreach ($oldOrder['stock_reservations'] as $productId => $reservation) {
+                    try {
+                        $stockService->logCancellationReturn(
+                            $productId,
+                            auth()->id(),
+                            $reservation['quantity'],
+                            null,
+                            "Update saved order - return old reservation - {$orderName}"
+                        );
+                    } catch (\Exception $stockError) {
+                        \Log::warning('Failed to return old stock for order update', [
+                            'order_name' => $orderName,
+                            'product_id' => $productId,
+                            'error' => $stockError->getMessage()
+                        ]);
+                    }
+                }
+            }
+            
+            // Reserve stock for new cart items
+            $stockService = app(\App\Services\StockService::class);
+            
+            foreach ($cart as $productId => $item) {
+                $product = \App\Models\Product::find($productId);
+                if (!$product) {
+                    throw new \Exception("Produk ID {$productId} tidak ditemukan.");
+                }
+                
+                try {
+                    $stockService->logSalesOut(
+                        $productId,
+                        auth()->id(),
+                        $item['quantity'],
+                        null,
+                        "Update saved order reservation - {$orderName}"
+                    );
+                    
+                    $stockReservations[$productId] = [
+                        'quantity' => $item['quantity'],
+                        'product_name' => $product->name,
+                        'reserved_at' => Carbon::now()->toISOString()
+                    ];
+                    
+                } catch (\Exception $stockError) {
+                    throw new \Exception("Gagal reserve stok untuk {$product->name}: {$stockError->getMessage()}");
+                }
+            }
+            
+            // Update saved order dengan preserved creation time
+            $savedOrders[$orderName] = [
+                'cart' => $cart,
+                'cart_totals' => $cartTotals,
+                'created_at' => $oldOrder['created_at'], // Keep original creation time
+                'updated_at' => Carbon::now()->toISOString(), // Add update timestamp
+                'stock_reservations' => $stockReservations,
+                'user_id' => auth()->id()
+            ];
+            
+            Session::put('saved_orders', $savedOrders);
+            
+            // Clear current cart
+            $this->clearCart();
+            
+            \DB::commit();
+            
+            \Log::info('Saved order updated successfully', [
+                'order_name' => $orderName,
+                'items_count' => count($cart),
+                'old_reservations' => count($oldOrder['stock_reservations'] ?? []),
+                'new_reservations' => count($stockReservations),
+                'updated_by' => auth()->id()
+            ]);
+            
+            return $savedOrders[$orderName];
+            
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Get all saved orders
      */
     public function getSavedOrders()

@@ -99,8 +99,8 @@
 
                 <!-- Transaction Page - Available for all roles with permission -->
                 @if(auth()->user()->hasRole('staf') || auth()->user()->hasRole('admin') || auth()->user()->hasRole('investor'))
-                    <a href="{{ route('transactions') }}" 
-                       class="@if(request()->routeIs('transactions*')) dock-active @endif">
+                    <a href="{{ route('staf.transactions') }}" 
+                       class="@if(request()->routeIs('staf.transactions*')) dock-active @endif">
                         <svg class="size-[1.2em]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -209,8 +209,8 @@
                         <!-- Transaction Page - Available for all roles with permission -->
                         @if(auth()->user()->hasRole('staf') || auth()->user()->hasRole('admin') || auth()->user()->hasRole('investor'))
                             <li>
-                                <a href="{{ route('transactions') }}" 
-                                   class="@if(request()->routeIs('transactions*')) active @endif">
+                                <a href="{{ route('staf.transactions') }}" 
+                                   class="@if(request()->routeIs('staf.transactions*')) active @endif">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>

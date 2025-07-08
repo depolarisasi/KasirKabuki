@@ -53,9 +53,7 @@
         
         <!-- LivewireAlert Scripts -->
         @livewireAlertScripts
-        
-        <!-- Toaster Hub Component -->
-        <x-toaster-hub />
+         
         
         <!-- SweetAlert -->
         @include('sweetalert::alert')

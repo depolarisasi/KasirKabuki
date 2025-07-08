@@ -58,7 +58,7 @@
                             <div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                                  wire:click="addToCart({{ $product->id }})">
                                 <div class="card-body p-4">
-                                    <div class="flex items-center justify-center bg-primary/10 rounded-lg h-16 mb-3 overflow-hidden">
+                                    <div class="flex items-center justify-center bg-primary/10 rounded-lg mb-3 overflow-hidden">
                                         @if($product->photo)
                                             <img src="{{ $product->photo_url }}" 
                                                  alt="{{ $product->name }}"
@@ -76,9 +76,39 @@
                                     
                                     <div class="text-center">
                                         <div class="badge badge-outline badge-xs mb-2">{{ $product->category->name }}</div>
-                                        <div class="text-lg font-bold text-primary">
-                                            {{ 'Rp ' . number_format($product->price, 0, ',', '.') }}
-                                        </div>
+                                        @php 
+                                            $basePrice = $product->getAppropriatePrice($orderType, $selectedPartner);
+                                            $discountedPrice = $product->getDiscountedPrice($orderType, $selectedPartner);
+                                            $hasDiscount = $product->hasActiveDiscount($orderType);
+                                            $isPartnerPrice = ($orderType === 'online' && $selectedPartner && $basePrice != $product->price);
+                                        @endphp
+                                        
+                                        @if($hasDiscount)
+                                            <!-- Product has auto-discount -->
+                                            <div class="text-lg font-bold text-success">
+                                                {{ 'Rp ' . number_format($discountedPrice, 0, ',', '.') }}
+                                            </div>
+                                            <div class="text-sm text-base-content/60 line-through">
+                                                {{ 'Rp ' . number_format($basePrice, 0, ',', '.') }}
+                                            </div>
+                                            <div class="badge badge-success badge-xs mt-1">
+                                                @php $discount = $product->getApplicableDiscount($orderType); @endphp
+                                                Diskon {{ $discount->formatted_value }}
+                                            </div>
+                                        @else
+                                            <!-- No auto-discount, show normal price -->
+                                            <div class="text-lg font-bold text-primary">
+                                                {{ 'Rp ' . number_format($basePrice, 0, ',', '.') }}
+                                            </div>
+                                            @if($isPartnerPrice)
+                                                <div class="text-xs text-base-content/60 line-through">
+                                                    {{ 'Rp ' . number_format($product->price, 0, ',', '.') }}
+                                                </div>
+                                                <div class="badge badge-warning badge-xs mt-1">
+                                                    Partner Price
+                                                </div>
+                                            @endif
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -136,7 +166,7 @@
                             <label class="label">
                                 <span class="label-text font-semibold">Partner Online</span>
                             </label>
-                            <select wire:model="selectedPartner" class="select select-bordered w-full">
+                            <select wire:model.live="selectedPartner" class="select select-bordered w-full">
                                 <option value="">Pilih Partner</option>
                                 @foreach($partners as $partner)
                                     <option value="{{ $partner->id }}">{{ $partner->name }} ({{ $partner->commission_rate }}%)</option>
@@ -217,12 +247,12 @@
                                                 -Rp {{ number_format($discount['value'], 0, ',', '.') }}
                                             @endif
                                         </span>
-                                    <button wire:click="removeDiscount({{ $discountId }})" 
+                                        <button wire:click="removeDiscount({{ $discountId }})" 
                                                 class="btn btn-xs btn-circle btn-ghost ml-2">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                             @endforeach
@@ -253,6 +283,53 @@
                         </button>
                         </div>
                     </div>
+
+                    <!-- Ad-hoc Discount -->
+                    @if($orderType !== 'online')
+                        <div class="form-control mb-4">
+                            <label class="label">
+                                <span class="label-text font-semibold">Diskon Cepat</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text text-xs">Diskon %</span>
+                                    </label>
+                                    <input wire:model.live="adhocDiscountPercentage" 
+                                           type="number" 
+                                           step="0.1"
+                                           min="0" 
+                                           max="100"
+                                           placeholder="0"
+                                           class="input input-bordered input-sm" />
+                                </div>
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text text-xs">Diskon Rp</span>
+                                    </label>
+                                    <input wire:model.live="adhocDiscountAmount" 
+                                           type="number" 
+                                           step="1000"
+                                           min="0"
+                                           placeholder="0"
+                                           class="input input-bordered input-sm" />
+                                </div>
+                            </div>
+                            <button wire:click="applyAdhocDiscount" 
+                                    class="btn btn-warning btn-sm w-full"
+                                    @if((!$adhocDiscountPercentage && !$adhocDiscountAmount) || ($adhocDiscountPercentage && $adhocDiscountAmount)) disabled @endif>
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                </svg>
+                                Terapkan Diskon Cepat
+                            </button>
+                            @if($adhocDiscountPercentage && $adhocDiscountAmount)
+                                <div class="text-xs text-error mt-1">
+                                    Pilih salah satu: diskon % atau diskon nominal
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <!-- Cart Totals -->
                     @if(!empty($cartData['cart_items']))
@@ -287,7 +364,7 @@
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
-                            Checkout ({{ array_sum(array_column($cartData['cart_items'], 'quantity')) }} item)
+                            Checkout ({{ isset($cartData['cart_items']) && is_array($cartData['cart_items']) ? array_sum(array_column($cartData['cart_items'], 'quantity')) : 0 }} item)
                         </button>
                     @endif
                 </div>
@@ -301,29 +378,29 @@
             <div class="modal-box">
                 <h3 class="font-bold text-lg mb-4">Muat Pesanan Tersimpan</h3>
                 
-                @if($savedOrders->count() > 0)
+                @if(count($savedOrders) > 0)
                 <div class="space-y-3 max-h-64 overflow-y-auto">
-                        @foreach($savedOrders as $order)
+                        @foreach($savedOrders as $orderName => $order)
                             <div class="border border-base-300 rounded-lg p-3">
                                 <div class="flex justify-between items-start mb-2">
                                     <div>
-                                        <h4 class="font-semibold">{{ $order->order_name }}</h4>
+                                        <h4 class="font-semibold">{{ $orderName }}</h4>
                                         <p class="text-sm text-base-content/60">
-                                            {{ $order->created_at->format('d M Y, H:i') }}
+                                            {{ \Carbon\Carbon::parse($order['created_at'])->format('d M Y, H:i') }}
                                         </p>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-sm font-bold">{{ $order->formatted_total }}</p>
-                                        <p class="text-xs text-base-content/60">{{ $order->items_count }} item</p>
+                                        <p class="text-sm font-bold">Rp {{ number_format($order['final_total'], 0, ',', '.') }}</p>
+                                        <p class="text-xs text-base-content/60">{{ count($order['cart']) }} item</p>
                                     </div>
                                 </div>
                                 
                                 <div class="flex gap-2 mt-3">
-                                    <button wire:click="loadOrder({{ $order->id }})" 
+                                    <button wire:click="loadSavedOrder('{{ $orderName }}')" 
                                             class="btn btn-primary btn-sm flex-1">
                                         Muat Pesanan
                                     </button>
-                                    <button wire:click="deleteSavedOrder({{ $order->id }})" 
+                                    <button wire:click="deleteSavedOrder('{{ $orderName }}')" 
                                             class="btn btn-error btn-outline btn-sm">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -499,7 +576,7 @@
                     <label class="label">
                         <span class="label-text font-semibold">Metode Pembayaran</span>
                     </label>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid {{ $orderType === 'online' ? 'grid-cols-3' : 'grid-cols-2' }} gap-3">
                         <label class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'cash' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
                             <div class="flex items-center space-x-3">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -507,7 +584,7 @@
                                 </svg>
                                 <span class="font-semibold">Tunai</span>
                             </div>
-                            <input wire:model="paymentMethod" type="radio" value="cash" class="radio radio-primary" />
+                            <input wire:model.live="paymentMethod" type="radio" value="cash" class="radio radio-primary" />
                         </label>
                         
                         <label class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'qris' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
@@ -517,8 +594,20 @@
                                 </svg>
                                 <span class="font-semibold">QRIS</span>
                             </div>
-                            <input wire:model="paymentMethod" type="radio" value="qris" class="radio radio-primary" />
+                            <input wire:model.live="paymentMethod" type="radio" value="qris" class="radio radio-primary" />
                         </label>
+                        
+                        @if($orderType === 'online')
+                            <label class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'aplikasi' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="font-semibold">Aplikasi</span>
+                                </div>
+                                <input wire:model.live="paymentMethod" type="radio" value="aplikasi" class="radio radio-primary" />
+                            </label>
+                        @endif
                     </div>
                 </div>
 
@@ -696,6 +785,61 @@
                 receiptWindow.focus();
             }
         });
+
+        // Handle payment method changes for better UI feedback
+        Livewire.on('paymentMethodChanged', (event) => {
+            console.log('Payment method changed:', event);
+            
+            // Add visual feedback for payment method selection
+            const cashLabel = document.querySelector('label:has(input[value="cash"])');
+            const qrisLabel = document.querySelector('label:has(input[value="qris"])');
+            
+            if (event.method === 'cash') {
+                console.log('Switched to Cash - amount should be editable');
+                // Ensure payment amount field gets focus when switching to cash
+                setTimeout(() => {
+                    const amountInput = document.querySelector('input[wire\\:model\\.live="paymentAmount"]');
+                    if (amountInput) {
+                        amountInput.focus();
+                    }
+                }, 100);
+            } else if (event.method === 'qris') {
+                console.log('Switched to QRIS - amount auto-set to:', event.amount);
+            }
+        });
+
+        // Listen for transaction completed events
+        Livewire.on('transaction-completed', (event) => {
+            const transactionData = event[0];
+            
+            // Broadcast to other tabs for real-time updates
+            if (typeof window.broadcastTransactionCompleted === 'function') {
+                window.broadcastTransactionCompleted(transactionData);
+            } else {
+                // Fallback for cross-tab communication
+                localStorage.setItem('last-transaction', JSON.stringify({
+                    ...transactionData,
+                    timestamp: Date.now()
+                }));
+                
+                // Dispatch custom event
+                const customEvent = new CustomEvent('transaction-completed', {
+                    detail: transactionData
+                });
+                document.dispatchEvent(customEvent);
+            }
+            
+            console.log('Transaction completed, broadcasted to other tabs:', transactionData);
+        });
+    });
+    
+    // Auto-focus search when page loads for better UX
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[wire\\:model\\.live="searchProduct"]');
+        if (searchInput) {
+            // Small delay to ensure component is ready
+            setTimeout(() => searchInput.focus(), 500);
+        }
     });
 </script>
 </div>

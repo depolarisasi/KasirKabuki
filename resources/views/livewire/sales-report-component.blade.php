@@ -9,9 +9,40 @@
                         <div>
                             <h1 class="text-3xl font-bold text-primary">📊 Laporan Penjualan</h1>
                             <p class="text-base-content/70 mt-1">Analisis komprehensif penjualan dan pendapatan</p>
+                            @if($lastRefresh)
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="text-sm text-base-content/60">Terakhir diperbarui:</span>
+                                    <span class="text-sm font-medium text-base-content">{{ $lastRefresh }}</span>
+                                    @if($autoRefresh)
+                                        <div class="badge badge-success badge-sm">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            Real-time
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                         
-                        <div class="flex gap-2">
+                        <div class="flex flex-wrap gap-2">
+                            <!-- Auto Refresh Toggle -->
+                            <button wire:click="toggleAutoRefresh" 
+                                    class="btn btn-sm {{ $autoRefresh ? 'btn-success' : 'btn-outline' }}"
+                                    title="{{ $autoRefresh ? 'Nonaktifkan auto refresh' : 'Aktifkan auto refresh' }}">
+                                @if($autoRefresh)
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+                                    </svg>
+                                    Auto Update
+                                @else
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3"></path>
+                                    </svg>
+                                    Manual
+                                @endif
+                            </button>
+                            
                             <button wire:click="refreshReport" 
                                     class="btn btn-outline btn-primary btn-sm"
                                     wire:loading.attr="disabled">
@@ -27,14 +58,16 @@
                                 </span>
                             </button>
                             
-                            <button wire:click="exportToExcel" 
-                                    class="btn btn-success btn-sm"
-                                    @if(empty($reportData)) disabled @endif>
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                Export Excel
-                            </button>
+                            @if(!$investorMode)
+                                <button wire:click="exportToExcel" 
+                                        class="btn btn-success btn-sm"
+                                        @if(empty($reportData)) disabled @endif>
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Export Excel
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -518,5 +551,91 @@ document.addEventListener('livewire:init', () => {
             });
         }
     });
+    
+    // Handle real-time report updates
+    Livewire.on('report-updated', (event) => {
+        const data = event[0];
+        showRealTimeNotification(data.message, data.time);
+    });
+    
+    // Function to show discrete real-time notifications
+    function showRealTimeNotification(message, time) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 z-50 transform translate-x-full transition-transform duration-300 ease-in-out';
+        notification.innerHTML = `
+            <div class="alert alert-info shadow-lg max-w-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <div class="font-semibold">${message}</div>
+                    <div class="text-sm opacity-70">Pukul ${time}</div>
+                </div>
+                <button class="btn btn-sm btn-ghost" onclick="this.parentElement.parentElement.remove()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 5000);
+    }
+    
+    // Listen for global transaction events (for cross-tab communication)
+    document.addEventListener('transaction-completed', (event) => {
+        // This will trigger if the event comes from another tab/window
+        if (event.detail) {
+            @this.call('handleTransactionCompleted', event.detail);
+        }
+    });
+});
+
+// Global function to broadcast transaction events across tabs
+window.broadcastTransactionCompleted = function(transactionData) {
+    // Broadcast custom event for cross-tab communication
+    const event = new CustomEvent('transaction-completed', {
+        detail: transactionData
+    });
+    document.dispatchEvent(event);
+    
+    // Also use localStorage for cross-tab communication
+    localStorage.setItem('last-transaction', JSON.stringify({
+        ...transactionData,
+        timestamp: Date.now()
+    }));
+};
+
+// Listen for localStorage changes (cross-tab communication)
+window.addEventListener('storage', function(e) {
+    if (e.key === 'last-transaction' && e.newValue) {
+        try {
+            const transactionData = JSON.parse(e.newValue);
+            // Only process if timestamp is within last 10 seconds
+            if (Date.now() - transactionData.timestamp < 10000) {
+                @this.call('handleTransactionCompleted', transactionData);
+            }
+        } catch (error) {
+            console.log('Error parsing transaction data:', error);
+        }
+    }
 });
 </script>

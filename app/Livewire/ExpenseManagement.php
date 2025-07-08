@@ -5,14 +5,13 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Expense;
 use Livewire\WithPagination;
-use Livewire\Attributes\Rule;
-use Masmerise\Toaster\Toastable;
+use Livewire\Attributes\Rule; 
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Carbon\Carbon;
 
 class ExpenseManagement extends Component
 {
-    use WithPagination, Toastable;
+    use WithPagination;
 
     // Form properties
     #[Rule('required|numeric|min:1|max:99999999.99')]
@@ -23,6 +22,9 @@ class ExpenseManagement extends Component
     
     #[Rule('required|date|before_or_equal:today')]
     public $date = '';
+    
+    #[Rule('required|in:gaji,bahan_baku_sate,bahan_baku_makanan_lain,listrik,air,gas,promosi_marketing,pemeliharaan_alat')]
+    public $category = '';
 
     // Component state
     public $expenseId = null;
@@ -34,6 +36,10 @@ class ExpenseManagement extends Component
     public $filterDate = '';
     public $filterMonth = '';
     public $filterYear = '';
+    public $filterCategory = '';
+
+    // Category options for form
+    public $categoryOptions = [];
 
     protected $paginationView = 'vendor.pagination.daisyui';
 
@@ -41,6 +47,7 @@ class ExpenseManagement extends Component
     {
         $this->date = Carbon::today()->format('Y-m-d');
         $this->filterMonth = Carbon::now()->format('Y-m');
+        $this->categoryOptions = Expense::getCategoryLabels();
     }
 
     public function render()
@@ -52,6 +59,9 @@ class ExpenseManagement extends Component
             })
             ->when($this->filterDate, function ($query) {
                 $query->forDate($this->filterDate);
+            })
+            ->when($this->filterCategory, function ($query) {
+                $query->byCategory($this->filterCategory);
             })
             ->when($this->filterMonth && !$this->filterDate, function ($query) {
                 $year = Carbon::parse($this->filterMonth)->year;
@@ -70,6 +80,9 @@ class ExpenseManagement extends Component
             ->when($this->filterDate, function ($query) {
                 $query->forDate($this->filterDate);
             })
+            ->when($this->filterCategory, function ($query) {
+                $query->byCategory($this->filterCategory);
+            })
             ->when($this->filterMonth && !$this->filterDate, function ($query) {
                 $year = Carbon::parse($this->filterMonth)->year;
                 $month = Carbon::parse($this->filterMonth)->month;
@@ -87,10 +100,23 @@ class ExpenseManagement extends Component
             'this_month' => Expense::getTotalThisMonth(),
         ];
 
+        // Category breakdown for current filter
+        $categoryBreakdown = Expense::query()
+            ->when($this->filterMonth && !$this->filterDate, function ($query) {
+                $year = Carbon::parse($this->filterMonth)->year;
+                $month = Carbon::parse($this->filterMonth)->month;
+                $query->forMonth($year, $month);
+            })
+            ->selectRaw('category, SUM(amount) as total')
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->toArray();
+
         return view('livewire.expense-management', [
             'expenses' => $expenses,
             'totals' => $totals,
-            'stats' => $stats
+            'stats' => $stats,
+            'categoryBreakdown' => $categoryBreakdown
         ]);
     }
 
@@ -111,11 +137,15 @@ class ExpenseManagement extends Component
             $this->expenseId = $expense->id;
             $this->amount = $expense->amount;
             $this->description = $expense->description;
+            $this->category = $expense->category;
             $this->date = $expense->date->format('Y-m-d');
             $this->isEditMode = true;
             $this->showModal = true;
         } else {
-            $this->error('Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
+            LivewireAlert::title('Error!')
+                ->text('Anda tidak memiliki izin untuk mengedit pengeluaran ini.')
+                ->error()
+                ->show();
         }
     }
 
@@ -128,6 +158,7 @@ class ExpenseManagement extends Component
                 'user_id' => auth()->id(),
                 'amount' => $this->amount,
                 'description' => $this->description,
+                'category' => $this->category,
                 'date' => $this->date,
             ];
 
@@ -136,21 +167,33 @@ class ExpenseManagement extends Component
                 
                 // Check authorization for editing
                 if (!auth()->user()->hasRole('admin') && $expense->user_id !== auth()->id()) {
-                    $this->error('Anda tidak memiliki izin untuk mengedit pengeluaran ini.');
+                    LivewireAlert::title('Error!')
+                        ->text('Anda tidak memiliki izin untuk mengedit pengeluaran ini.')
+                        ->error()
+                        ->show();
                     return;
                 }
                 
                 $expense->update($data);
-                $this->success('Pengeluaran berhasil diperbarui.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Pengeluaran \"{$expense->description}\" berhasil diperbarui.")
+                ->success()
+                ->show();
             } else {
-                Expense::create($data);
-                $this->success('Pengeluaran berhasil ditambahkan.');
+                $newExpense = Expense::create($data);
+                LivewireAlert::title('Berhasil!')
+                ->text("Pengeluaran \"{$newExpense->description}\" berhasil ditambahkan.")
+                ->success()
+                ->show();
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat menyimpan pengeluaran: ' . $e->getMessage());
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menyimpan pengeluaran.')
+                ->error()
+                ->show();
         }
     }
 
@@ -197,10 +240,10 @@ class ExpenseManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            LivewireAlert::title('Error!')
-                ->text('Terjadi kesalahan saat memproses pengeluaran.')
-                ->error()
-                ->show();
+                LivewireAlert::title('Error!')
+                    ->text('Terjadi kesalahan saat memproses pengeluaran.')
+                    ->error()
+                    ->show();
         }
     }
 
@@ -254,14 +297,13 @@ class ExpenseManagement extends Component
 
     public function resetForm()
     {
-        $this->reset(['amount', 'description', 'date', 'expenseId', 'isEditMode']);
+        $this->reset(['amount', 'description', 'category', 'date', 'expenseId', 'isEditMode']);
         $this->resetValidation();
     }
 
     public function resetFilters()
     {
-        $this->reset(['search', 'filterDate', 'filterMonth']);
-        $this->filterMonth = Carbon::now()->format('Y-m');
+        $this->reset(['search', 'filterDate', 'filterMonth', 'filterCategory']);
         $this->resetPage();
     }
 

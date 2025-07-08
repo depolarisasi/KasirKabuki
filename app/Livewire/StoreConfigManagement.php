@@ -5,7 +5,7 @@ namespace App\Livewire;
 use App\Models\StoreSetting;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use RealRashid\SweetAlert\Facades\Alert;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Illuminate\Support\Facades\Storage;
 
 class StoreConfigManagement extends Component
@@ -83,10 +83,16 @@ class StoreConfigManagement extends Component
 
             StoreSetting::updateSettings($data);
 
-            Alert::success('Berhasil!', 'Konfigurasi toko berhasil diperbarui.');
+            LivewireAlert::title('Berhasil!')
+                ->text('Konfigurasi toko berhasil diperbarui.')
+                ->success()
+                ->show();
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal memperbarui konfigurasi: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal memperbarui konfigurasi: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 
@@ -106,10 +112,16 @@ class StoreConfigManagement extends Component
             // Open test receipt in new window
             $this->dispatch('open-test-receipt', ['testData' => $testData]);
             
-            Alert::info('Test Print', 'Membuka jendela test print. Pastikan printer Anda sudah terhubung.');
+            LivewireAlert::title('Test Print')
+                ->text('Membuka jendela test print. Pastikan printer Anda sudah terhubung.')
+                ->info()
+                ->show();
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal membuka test print: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal membuka test print: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 
@@ -123,7 +135,10 @@ class StoreConfigManagement extends Component
         $this->receipt_footer = 'Selamat menikmati & sampai jumpa lagi!';
         $this->show_receipt_logo = false;
         
-        Alert::info('Reset', 'Form telah direset ke nilai default.');
+        LivewireAlert::title('Reset')
+            ->text('Form telah direset ke nilai default.')
+            ->info()
+            ->show();
     }
 
     public function render()

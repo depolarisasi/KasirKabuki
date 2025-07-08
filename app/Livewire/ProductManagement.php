@@ -5,16 +5,17 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\Partner;
+use App\Models\ProductPartnerPrice;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Rule;
-use Masmerise\Toaster\Toastable;
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Illuminate\Support\Facades\Storage;
 
 class ProductManagement extends Component
 {
-    use WithPagination, WithFileUploads, Toastable;
+    use WithPagination, WithFileUploads;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -43,13 +44,18 @@ class ProductManagement extends Component
     public $search = '';
     public $categoryFilter = '';
 
+    // Partner pricing properties
+    public $partnerPrices = [];
+    public $enablePartnerPricing = false;
+    
     protected $paginationView = 'vendor.pagination.daisyui';
 
     public function render()
     {
         $categories = Category::orderBy('name')->get();
+        $partners = Partner::orderBy('name')->get();
         
-        $products = Product::with('category')
+        $products = Product::with(['category', 'partnerPrices'])
             ->when($this->search, function ($query) {
                 $query->search($this->search);
             })
@@ -61,7 +67,8 @@ class ProductManagement extends Component
 
         return view('livewire.product-management', [
             'products' => $products,
-            'categories' => $categories
+            'categories' => $categories,
+            'partners' => $partners
         ]);
     }
 
@@ -70,6 +77,7 @@ class ProductManagement extends Component
         $this->resetForm();
         $this->isEditMode = false;
         $this->showModal = true;
+        $this->initializePartnerPrices();
     }
 
     public function openEditModal($productId)
@@ -84,6 +92,9 @@ class ProductManagement extends Component
         $this->existingPhoto = $product->photo;
         $this->isEditMode = true;
         $this->showModal = true;
+        
+        // Load existing partner prices
+        $this->loadPartnerPrices($product);
     }
 
     public function save()
@@ -122,18 +133,33 @@ class ProductManagement extends Component
                 $product = Product::findOrFail($this->productId);
                 $product->update($data);
                 
-                $this->success('Produk berhasil diperbarui.');
-            } else {
-                Product::create($data);
+                // Update partner prices
+                $this->savePartnerPrices($product);
                 
-                $this->success('Produk berhasil ditambahkan.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Produk \"{$data['name']}\" berhasil diperbarui.")
+                ->success()
+                ->show();
+            } else {
+                $product = Product::create($data);
+                
+                // Save partner prices for new product
+                $this->savePartnerPrices($product);
+                
+                LivewireAlert::title('Berhasil!')
+                ->text("Produk \"{$data['name']}\" berhasil ditambahkan.")
+                ->success()
+                ->show();
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyimpan produk.';
-            $this->error('Terjadi kesalahan saat menyimpan produk: ' . $errorMessage);
+            LivewireAlert::title('Error!')
+            ->text('Terjadi kesalahan saat menyimpan produk: ' . $errorMessage)
+            ->error()
+            ->show();
         }
     }
 
@@ -166,7 +192,10 @@ class ProductManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->error('Terjadi kesalahan saat memproses produk.');
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat memproses produk.')
+                ->error()
+                ->show();
         }
     }
 
@@ -192,7 +221,10 @@ class ProductManagement extends Component
             
             $product->delete();
             
-            $this->success("Produk \"{$productName}\" berhasil dihapus.");
+            LivewireAlert::title('Berhasil!')
+                ->text("Produk \"{$productName}\" berhasil dihapus.")
+                ->success()
+                ->show();
                 
             $this->resetPage();
         } catch (\Exception $e) {
@@ -201,7 +233,10 @@ class ProductManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->error('Terjadi kesalahan saat menghapus produk.');
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menghapus produk.')
+                ->error()
+                ->show();
         }
     }
 
@@ -213,7 +248,8 @@ class ProductManagement extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'description', 'price', 'category_id', 'photo', 'existingPhoto', 'productId', 'isEditMode']);
+        $this->reset(['name', 'description', 'price', 'category_id', 'photo', 'existingPhoto', 'productId', 'isEditMode', 'enablePartnerPricing']);
+        $this->partnerPrices = [];
         $this->resetValidation();
     }
 
@@ -231,5 +267,82 @@ class ProductManagement extends Component
     {
         $this->reset(['search', 'categoryFilter']);
         $this->resetPage();
+    }
+
+    private function initializePartnerPrices()
+    {
+        $partners = Partner::orderBy('name')->get();
+        $this->partnerPrices = [];
+        $this->enablePartnerPricing = false;
+        
+        foreach ($partners as $partner) {
+            $this->partnerPrices[$partner->id] = [
+                'partner_name' => $partner->name,
+                'price' => '',
+                'is_active' => false
+            ];
+        }
+    }
+
+    private function loadPartnerPrices($product)
+    {
+        $partners = Partner::orderBy('name')->get();
+        $existingPrices = $product->partnerPrices()->get()->keyBy('partner_id');
+        $this->partnerPrices = [];
+        
+        // Check if any partner prices exist
+        $this->enablePartnerPricing = $existingPrices->count() > 0;
+        
+        foreach ($partners as $partner) {
+            $existingPrice = $existingPrices->get($partner->id);
+            $this->partnerPrices[$partner->id] = [
+                'partner_name' => $partner->name,
+                'price' => $existingPrice ? $existingPrice->price : '',
+                'is_active' => $existingPrice ? $existingPrice->is_active : false
+            ];
+        }
+    }
+
+    private function savePartnerPrices($product)
+    {
+        if (!$this->enablePartnerPricing) {
+            // If partner pricing is disabled, remove all existing partner prices
+            $product->partnerPrices()->delete();
+            return;
+        }
+        
+        foreach ($this->partnerPrices as $partnerId => $priceData) {
+            // Only save if price is set and active
+            if (!empty($priceData['price']) && $priceData['is_active']) {
+                ProductPartnerPrice::updateOrCreate(
+                    [
+                        'product_id' => $product->id,
+                        'partner_id' => $partnerId
+                    ],
+                    [
+                        'price' => $priceData['price'],
+                        'is_active' => true
+                    ]
+                );
+            } else {
+                // Remove partner price if exists but not active or no price set
+                ProductPartnerPrice::where('product_id', $product->id)
+                    ->where('partner_id', $partnerId)
+                    ->delete();
+            }
+        }
+    }
+
+    public function togglePartnerPricing()
+    {
+        $this->enablePartnerPricing = !$this->enablePartnerPricing;
+        
+        if (!$this->enablePartnerPricing) {
+            // Reset all partner prices when disabled
+            foreach ($this->partnerPrices as $partnerId => $priceData) {
+                $this->partnerPrices[$partnerId]['price'] = '';
+                $this->partnerPrices[$partnerId]['is_active'] = false;
+            }
+        }
     }
 }

@@ -43,9 +43,20 @@
                     </select>
                 </div>
 
+                <!-- Filter Order Type -->
+                <div class="form-control">
+                    <select wire:model.live="filterOrderType" class="select select-bordered w-full">
+                        <option value="">Semua Jenis</option>
+                        <option value="all">Semua Jenis Pesanan</option>
+                        <option value="dine_in">Makan di Tempat</option>
+                        <option value="take_away">Bawa Pulang</option>
+                        <option value="online">Online</option>
+                    </select>
+                </div>
+
                 <!-- Reset Filters -->
                 <div class="form-control">
-                    <button wire:click="$set('search', ''); $set('filterType', ''); $set('filterStatus', '')" 
+                    <button wire:click="$set('search', ''); $set('filterType', ''); $set('filterStatus', ''); $set('filterOrderType', '')" 
                             class="btn btn-ghost">
                         Reset Filter
                     </button>
@@ -62,6 +73,7 @@
                             <th>Tipe</th>
                             <th>Nilai</th>
                             <th>Produk</th>
+                            <th>Jenis Pesanan</th>
                             <th>Status</th>
                             <th>Dibuat</th>
                             <th>Aksi</th>
@@ -102,6 +114,11 @@
                                     @endif
                                 </td>
                                 <td>
+                                    <div class="badge {{ $discount->order_type ? 'badge-accent' : 'badge-neutral' }}">
+                                        {{ $discount->order_type_label }}
+                                    </div>
+                                </td>
+                                <td>
                                     <button wire:click="toggleStatus({{ $discount->id }})" 
                                             class="badge {{ $discount->status_badge }} cursor-pointer hover:opacity-75">
                                         {{ $discount->status_text }}
@@ -129,14 +146,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-8">
+                                <td colspan="9" class="text-center py-8">
                                     <div class="flex flex-col items-center">
                                         <svg class="w-12 h-12 text-base-content/30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                                   d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                                         </svg>
                                         <p class="text-base-content/70">
-                                            @if($search || $filterType || $filterStatus !== '')
+                                            @if($search || $filterType || $filterStatus !== '' || $filterOrderType !== '')
                                                 Tidak ada diskon yang sesuai dengan filter
                                             @else
                                                 Belum ada diskon. Tambahkan diskon pertama Anda!
@@ -239,6 +256,26 @@
                             @enderror
                         </div>
                     @endif
+
+                    <!-- Order Type Selection -->
+                    <div class="form-control w-full mb-4">
+                        <label class="label">
+                            <span class="label-text">Jenis Pesanan</span>
+                        </label>
+                        <select wire:model="order_type" class="select select-bordered w-full @error('order_type') select-error @enderror">
+                            @foreach($orderTypeOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <label class="label">
+                            <span class="label-text-alt">Pilih jenis pesanan tertentu atau biarkan "Semua Jenis Pesanan" untuk berlaku di semua jenis</span>
+                        </label>
+                        @error('order_type')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
 
                     <!-- Value Type and Value Row -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

@@ -23,6 +23,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'is_active',
+        'pin',
     ];
 
     /**
@@ -33,6 +35,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'pin',
     ];
 
     /**
@@ -45,6 +48,39 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Generate a random 6-digit PIN.
+     */
+    public static function generateRandomPin(): string
+    {
+        do {
+            $pin = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        } while (self::where('pin', $pin)->exists());
+
+        return $pin;
+    }
+
+    /**
+     * Check if user has a PIN set.
+     */
+    public function hasPin(): bool
+    {
+        return !empty($this->pin);
+    }
+
+    /**
+     * Get masked PIN for display (show first 2 digits).
+     */
+    public function getMaskedPinAttribute(): string
+    {
+        if (!$this->hasPin()) {
+            return 'Belum diset';
+        }
+
+        return substr($this->pin, 0, 2) . '****';
     }
 }

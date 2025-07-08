@@ -9,13 +9,13 @@ use Jantinnerezo\LivewireAlert\Enums\Position;
 
 return [
     'position' => Position::Center,
-    'timer' => 5000,
+    'timer' => 2000,
     'toast' => false,
     'text' => null,
     'confirmButtonText' => 'Ya',
     'cancelButtonText' => 'Batal',
     'denyButtonText' => 'Tidak',
-    'showCancelButton' => true,
-    'showConfirmButton' => true,
+    'showCancelButton' => false,
+    'showConfirmButton' => false,
     'backdrop' => false,
 ];

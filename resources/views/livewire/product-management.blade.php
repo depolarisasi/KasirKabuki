@@ -81,6 +81,17 @@
                                 </td>
                                 <td>
                                     <div class="font-semibold">{{ $product->name }}</div>
+                                    @if($product->description)
+                                        <div class="text-sm text-base-content/60 max-w-xs truncate">{{ $product->description }}</div>
+                                    @endif
+                                    @if($product->partnerPrices->count() > 0)
+                                        <div class="badge badge-warning badge-xs mt-1">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                            </svg>
+                                            {{ $product->partnerPrices->count() }} Partner Price(s)
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
                                     <div class="badge badge-outline">
@@ -272,12 +283,88 @@
                             <span class="label-text">Deskripsi</span>
                         </label>
                         <textarea wire:model="description" placeholder="Deskripsi produk (opsional)"
-                            class="textarea textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
+                            class="textarea w-full textarea-bordered h-24 @error('description') textarea-error @enderror"></textarea>
                         @error('description')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </label>
                         @enderror
+                    </div>
+
+                    <!-- Partner Pricing Section -->
+                    <div class="form-control w-full mt-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <label class="label cursor-pointer">
+                                <span class="label-text font-semibold">Partner Pricing</span>
+                                <input wire:model.live="enablePartnerPricing" 
+                                       wire:click="togglePartnerPricing"
+                                       type="checkbox" 
+                                       class="toggle toggle-primary ml-2" />
+                            </label>
+                        </div>
+                        
+                        @if($enablePartnerPricing)
+                            <div class="bg-base-200 rounded-lg p-4">
+                                <div class="text-sm text-base-content/70 mb-3">
+                                    Set partner-specific prices for online orders. Leave blank to use default price.
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    @foreach($partners as $partner)
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center p-3 bg-base-100 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <input wire:model="partnerPrices.{{ $partner->id }}.is_active" 
+                                                       type="checkbox" 
+                                                       class="checkbox checkbox-primary checkbox-sm" />
+                                                <span class="font-medium">{{ $partner->name }}</span>
+                                            </div>
+                                            
+                                            <div class="form-control">
+                                                <div class="relative">
+                                                    <span class="absolute left-3 top-3 text-base-content/70 text-sm">Rp</span>
+                                                    <input wire:model="partnerPrices.{{ $partner->id }}.price" 
+                                                           type="number" 
+                                                           step="100" 
+                                                           min="0"
+                                                           placeholder="0"
+                                                           class="input input-bordered input-sm w-full pl-10"
+                                                           @if(!($partnerPrices[$partner->id]['is_active'] ?? false)) disabled @endif />
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="text-right">
+                                                @if(!empty($partnerPrices[$partner->id]['price']) && ($partnerPrices[$partner->id]['is_active'] ?? false))
+                                                    @php $saving = $price - $partnerPrices[$partner->id]['price']; @endphp
+                                                    @if($saving > 0)
+                                                        <span class="text-success text-sm">
+                                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                                            </svg>
+                                                            Save Rp {{ number_format($saving, 0, ',', '.') }}
+                                                        </span>
+                                                    @elseif($saving < 0)
+                                                        <span class="text-error text-sm">
+                                                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                                            </svg>
+                                                            +Rp {{ number_format(abs($saving), 0, ',', '.') }}
+                                                        </span>
+                                                    @endif
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                
+                                <div class="text-xs text-base-content/60 mt-3 p-2 bg-info/10 rounded">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Partner prices will be used for online orders when the specific partner is selected. 
+                                    Dine-in and take-away orders always use the default price.
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Modal Actions -->

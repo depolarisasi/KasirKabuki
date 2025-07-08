@@ -12,6 +12,7 @@ class Expense extends Model
         'user_id',
         'amount',
         'description',
+        'category',
         'date',
     ];
 
@@ -19,6 +20,23 @@ class Expense extends Model
         'amount' => 'decimal:2',
         'date' => 'date',
     ];
+
+    /**
+     * Category labels mapping
+     */
+    public static function getCategoryLabels()
+    {
+        return [
+            'gaji' => 'Gaji',
+            'bahan_baku_sate' => 'Bahan Baku Sate',
+            'bahan_baku_makanan_lain' => 'Bahan Baku Makanan Lain',
+            'listrik' => 'Listrik',
+            'air' => 'Air',
+            'gas' => 'Gas',
+            'promosi_marketing' => 'Promosi / Marketing',
+            'pemeliharaan_alat' => 'Pemeliharaan Alat'
+        ];
+    }
 
     /**
      * Relationship with User
@@ -34,6 +52,14 @@ class Expense extends Model
     public function scopeSearch($query, $search)
     {
         return $query->where('description', 'like', '%' . $search . '%');
+    }
+
+    /**
+     * Scope for specific category
+     */
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
     }
 
     /**
@@ -186,5 +212,33 @@ class Expense extends Model
                 ];
             })
         ];
+    }
+
+    /**
+     * Get category label
+     */
+    public function getCategoryLabelAttribute()
+    {
+        $labels = self::getCategoryLabels();
+        return $labels[$this->category] ?? $this->category;
+    }
+
+    /**
+     * Get category badge class based on category type
+     */
+    public function getCategoryBadgeAttribute()
+    {
+        $badges = [
+            'gaji' => 'badge-primary',
+            'bahan_baku_sate' => 'badge-secondary',
+            'bahan_baku_makanan_lain' => 'badge-accent',
+            'listrik' => 'badge-warning',
+            'air' => 'badge-info',
+            'gas' => 'badge-error',
+            'promosi_marketing' => 'badge-success',
+            'pemeliharaan_alat' => 'badge-neutral'
+        ];
+        
+        return $badges[$this->category] ?? 'badge-ghost';
     }
 }

@@ -5,13 +5,12 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Partner;
 use Livewire\WithPagination;
-use Livewire\Attributes\Rule;
-use Masmerise\Toaster\Toastable;
+use Livewire\Attributes\Rule; 
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class PartnerManagement extends Component
 {
-    use WithPagination, Toastable;
+    use WithPagination;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -76,17 +75,26 @@ class PartnerManagement extends Component
                 $partner = Partner::findOrFail($this->partnerId);
                 $partner->update($data);
                 
-                $this->success('Partner berhasil diperbarui.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Partner \"{$partner->name}\" berhasil diperbarui.")
+                ->success()
+                ->show();
             } else {
-                Partner::create($data);
+                $partner = Partner::create($data);
                 
-                $this->success('Partner berhasil ditambahkan.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Partner \"{$partner->name}\" berhasil ditambahkan.")
+                ->success()
+                ->show();
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat menyimpan partner: ' . $e->getMessage());
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menyimpan partner.')
+                ->error()
+                ->show();
         }
     }
 

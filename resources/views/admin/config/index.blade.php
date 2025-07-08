@@ -76,6 +76,19 @@
                 </div>
             </a>
 
+            <!-- User Management Card -->
+            <a href="{{ route('admin.users') }}" class="card bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 border border-indigo-200 hover:shadow-lg transition-all duration-300 group">
+                <div class="card-body items-center text-center">
+                    <div class="w-16 h-16 bg-indigo-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="card-title text-lg">User Management</h3>
+                    <p class="text-sm text-base-content/70">Kelola user dan role sistem</p>
+                </div>
+            </a>
+
             <!-- Back to Dashboard Card -->
             <a href="{{ route('admin.dashboard') }}" class="card bg-gradient-to-br from-gray-500/10 to-gray-600/10 border border-gray-200 hover:shadow-lg transition-all duration-300 group">
                 <div class="card-body items-center text-center">

@@ -9,10 +9,11 @@ use App\Models\Product;
 use Carbon\Carbon;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class StockReportComponent extends Component
 {
+    use WithPagination;
     public $startDate;
     public $endDate;
     public $reportData = [];
@@ -32,7 +33,7 @@ class StockReportComponent extends Component
     {
         // Initialize with current week data
         $this->setDatePeriod('week');
-        $this->generateReport(false); // Don't show success alert on initial load
+        $this->generateReportSilently(); // Silent on initial load
     }
 
     public function render()
@@ -65,24 +66,30 @@ class StockReportComponent extends Component
         }
 
         if ($period !== 'custom') {
-            $this->generateReport(false); // Don't show success alert on automatic period change
+            $this->generateReportSilently(); // Silent on automatic period change
         }
     }
 
-    public function generateReport($showSuccessAlert = true)
+    public function generateReport()
     {
         $this->isLoading = true;
 
         try {
             // Validate dates
             if (!$this->startDate || !$this->endDate) {
-                Alert::error('Error!', 'Tanggal mulai dan akhir harus diisi.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai dan akhir harus diisi.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
 
             if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
-                Alert::error('Error!', 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
@@ -90,13 +97,43 @@ class StockReportComponent extends Component
             // Generate stock report for date range
             $this->reportData = $this->getStockReportForRange($this->startDate, $this->endDate);
             
-            // Only show success alert if explicitly requested
-            if ($showSuccessAlert) {
-                Alert::success('Berhasil!', 'Laporan stok berhasil dibuat.');
-            }
+            LivewireAlert::title('Berhasil!')
+                ->text('Laporan stok berhasil dibuat.')
+                ->success()
+                ->show();
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal membuat laporan: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal membuat laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
+        } finally {
+            $this->isLoading = false;
+        }
+    }
+
+    public function generateReportSilently()
+    {
+        $this->isLoading = true;
+
+        try {
+            // Validate dates
+            if (!$this->startDate || !$this->endDate) {
+                $this->isLoading = false;
+                return;
+            }
+
+            if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
+                $this->isLoading = false;
+                return;
+            }
+
+            // Generate stock report for date range (no alert)
+            $this->reportData = $this->getStockReportForRange($this->startDate, $this->endDate);
+            
+        } catch (\Exception $e) {
+            // Silent operation - log error but don't show alert
+            \Log::error('Silent report generation failed: ' . $e->getMessage());
         } finally {
             $this->isLoading = false;
         }
@@ -194,7 +231,10 @@ class StockReportComponent extends Component
     {
         try {
             if (empty($this->reportData)) {
-                Alert::error('Error!', 'Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.');
+                LivewireAlert::title('Error!')
+                    ->text('Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.')
+                    ->error()
+                    ->show();
                 return;
             }
 
@@ -209,7 +249,10 @@ class StockReportComponent extends Component
             return $export->download($filename);
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal mengekspor laporan: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal mengekspor laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 

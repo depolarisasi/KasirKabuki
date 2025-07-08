@@ -5,13 +5,22 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StafController;
 use Illuminate\Support\Facades\Log;
 
-// Root route - redirect directly to login
+// Root route - redirect directly to PIN login as default
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect()->route('pin-login');
 })->name('home');
 
 // Authentication Routes (Breeze will handle these)
 require __DIR__.'/auth.php';
+
+// PIN Login Route - Available for guest users
+Route::get('/pin-login', App\Livewire\PinLogin::class)
+    ->middleware('guest')->name('pin-login');
+
+// Transaction Page Routes - Accessible to staff, admin, and investor
+Route::middleware(['auth', 'role:staf|admin|investor'])->group(function () {
+    Route::get('/transactions', App\Livewire\TransactionPageComponent::class)->name('transactions');
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
@@ -25,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
             'user_role_column' => $user->role ?? 'NULL',
             'hasRole_admin' => $user->hasRole('admin'),
             'hasRole_staf' => $user->hasRole('staf'),
+            'hasRole_investor' => $user->hasRole('investor'),
             'all_roles' => $user->roles ? $user->roles->pluck('name')->toArray() : [],
             'roles_count' => $user->roles ? $user->roles->count() : 0
         ]);
@@ -36,6 +46,9 @@ Route::middleware(['auth'])->group(function () {
         } elseif ($user->hasRole('staf')) {
             Log::info('Redirecting staff user to staf.cashier');
             return redirect()->route('staf.cashier');
+        } elseif ($user->hasRole('investor')) {
+            Log::info('Redirecting investor user to investor.dashboard');
+            return redirect()->route('investor.dashboard');
         }
         
         // Enhanced fallback - try using role column as backup
@@ -46,6 +59,9 @@ Route::middleware(['auth'])->group(function () {
             } elseif ($user->role === 'staf') {
                 Log::warning('Using fallback: role column shows staf, redirecting to staf.cashier');
                 return redirect()->route('staf.cashier');
+            } elseif ($user->role === 'investor') {
+                Log::warning('Using fallback: role column shows investor, redirecting to investor.dashboard');
+                return redirect()->route('investor.dashboard');
             }
         }
         
@@ -75,6 +91,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/products', [AdminController::class, 'products'])->name('products');
     Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
+    Route::get('/users', [AdminController::class, 'users'])->name('users');
     
     // Test Receipt Route
     Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
@@ -102,6 +119,15 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
     
     // Receipt Print Route
     Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
+});
+
+// Investor Routes - Protected by auth and investor role
+Route::middleware(['auth', 'role:investor'])->prefix('investor')->name('investor.')->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\InvestorController::class, 'dashboard'])->name('dashboard');
+    
+    // Reports - Read-only access
+    Route::get('/reports/sales', [App\Http\Controllers\InvestorController::class, 'salesReport'])->name('reports.sales');
+    Route::get('/reports/expenses', [App\Http\Controllers\InvestorController::class, 'expensesReport'])->name('reports.expenses');
 });
 
 // Breeze Profile Route (keep for user management)

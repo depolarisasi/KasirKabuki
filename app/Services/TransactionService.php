@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductPartnerPrice;
 use App\Models\Discount;
 use App\Models\Partner;
 use App\Models\Category;
@@ -17,6 +18,37 @@ class TransactionService
     public function getCart()
     {
         return Session::get('cart', []);
+    }
+
+    /**
+     * Add item to cart with custom price (for partner pricing)
+     */
+    public function addToCartWithPrice($productId, $quantity = 1, $customPrice = null)
+    {
+        $cart = $this->getCart();
+        
+        $product = Product::with('category')->findOrFail($productId);
+        
+        // Use custom price if provided (for partner pricing), otherwise use product price
+        $price = $customPrice !== null ? $customPrice : $product->price;
+        
+        if (isset($cart[$productId])) {
+            $cart[$productId]['quantity'] += $quantity;
+            // Update price in case partner pricing changed
+            $cart[$productId]['price'] = $price;
+        } else {
+            $cart[$productId] = [
+                'product_id' => $product->id,
+                'name' => $product->name,
+                'price' => $price,
+                'original_price' => $product->price, // Keep original for reference
+                'category' => $product->category->name,
+                'quantity' => $quantity,
+            ];
+        }
+        
+        Session::put('cart', $cart);
+        return $cart;
     }
 
     /**
@@ -192,6 +224,71 @@ class TransactionService
     }
 
     /**
+     * Apply ad-hoc discount to cart
+     */
+    public function applyAdhocDiscount($type, $value, $orderType = 'dine_in')
+    {
+        // Check if order type is online - discounts not allowed
+        if ($orderType === 'online') {
+            throw new \Exception('Diskon tidak dapat diterapkan pada pesanan online.');
+        }
+
+        $cart = $this->getCart();
+        if (empty($cart)) {
+            throw new \Exception('Keranjang kosong, tidak dapat menerapkan diskon.');
+        }
+
+        $cartTotals = $this->getCartTotals();
+        $subtotal = $cartTotals['subtotal'];
+
+        // Validate discount amount
+        if ($type === 'percentage') {
+            if ($value <= 0 || $value > 100) {
+                throw new \Exception('Persentase diskon harus antara 1-100%.');
+            }
+        } else if ($type === 'nominal') {
+            if ($value <= 0) {
+                throw new \Exception('Nominal diskon harus lebih dari 0.');
+            }
+            if ($value >= $subtotal) {
+                throw new \Exception('Nominal diskon tidak boleh melebihi subtotal transaksi.');
+            }
+        } else {
+            throw new \Exception('Tipe diskon tidak valid.');
+        }
+
+        $appliedDiscounts = Session::get('applied_discounts', []);
+        
+        // Remove any existing ad-hoc discount
+        foreach ($appliedDiscounts as $discountId => $discountData) {
+            if (strpos($discountId, 'adhoc_') === 0) {
+                unset($appliedDiscounts[$discountId]);
+            }
+        }
+        
+        // Generate unique ID for ad-hoc discount
+        $adhocId = 'adhoc_' . time();
+        
+        // Create ad-hoc discount data
+        $discountName = $type === 'percentage' 
+            ? "Diskon Cepat {$value}%" 
+            : "Diskon Cepat Rp " . number_format($value, 0, ',', '.');
+            
+        $appliedDiscounts[$adhocId] = [
+            'id' => $adhocId,
+            'name' => $discountName,
+            'type' => 'transaction',
+            'value_type' => $type === 'percentage' ? 'percentage' : 'fixed',
+            'value' => $value,
+            'product_id' => null,
+            'is_adhoc' => true
+        ];
+        
+        Session::put('applied_discounts', $appliedDiscounts);
+        return $appliedDiscounts;
+    }
+
+    /**
      * Get available discounts for current cart
      */
     public function getAvailableDiscounts($orderType = 'dine_in')
@@ -218,38 +315,111 @@ class TransactionService
     }
 
     /**
-     * Save current cart as a saved order
+     * Save current cart as order dengan stock reduction untuk prevent overselling
      */
     public function saveOrder($orderName)
     {
-        $cart = $this->getCart();
-        $appliedDiscounts = Session::get('applied_discounts', []);
-        
-        if (empty($cart)) {
-            throw new \Exception('Keranjang kosong, tidak dapat menyimpan pesanan.');
+        try {
+            \DB::beginTransaction();
+            
+            $cart = $this->getCart();
+            $cartTotals = $this->getCartTotals();
+            
+            if (empty($cart)) {
+                throw new \Exception('Keranjang belanja kosong.');
+            }
+            
+            $savedOrders = Session::get('saved_orders', []);
+            
+            if (isset($savedOrders[$orderName])) {
+                throw new \Exception('Nama pesanan sudah digunakan.');
+            }
+            
+            // Check stock availability untuk semua items dan reduce stock
+            $stockService = app(\App\Services\StockService::class);
+            $stockReservations = [];
+            
+            foreach ($cart as $productId => $item) {
+                $product = \App\Models\Product::find($productId);
+                if (!$product) {
+                    throw new \Exception("Produk '{$item['name']}' tidak ditemukan.");
+                }
+                
+                // Check stock availability with package support
+                $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
+                
+                if (!$stockCheck['available']) {
+                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. {$stockCheck['message']}");
+                }
+                
+                // Reserve stock by logging as sale temporarily
+                try {
+                    $stockMovements = $stockService->logSale(
+                        $product->id,
+                        auth()->id(),
+                        $item['quantity'],
+                        null, // No transaction ID yet
+                        "Saved order reservation - {$orderName}"
+                    );
+                    
+                    $stockReservations[$productId] = [
+                        'movements' => is_array($stockMovements) ? $stockMovements : [$stockMovements],
+                        'quantity' => $item['quantity']
+                    ];
+                } catch (\Exception $stockError) {
+                    throw new \Exception("Gagal reserve stok untuk {$product->name}: {$stockError->getMessage()}");
+                }
+            }
+            
+            // Save order dengan stock reservation info
+            $savedOrders[$orderName] = [
+                'cart' => $cart,
+                'cart_totals' => $cartTotals,
+                'created_at' => Carbon::now()->toISOString(),
+                'stock_reservations' => $stockReservations,
+                'user_id' => auth()->id()
+            ];
+            
+            Session::put('saved_orders', $savedOrders);
+            
+            // Clear current cart
+            $this->clearCart();
+            
+            \DB::commit();
+            
+            return $savedOrders[$orderName];
+            
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            
+            // If we have stock reservations that were made, we need to reverse them
+            if (isset($stockReservations)) {
+                $stockService = app(\App\Services\StockService::class);
+                foreach ($stockReservations as $productId => $reservation) {
+                    try {
+                        $stockService->logCancellationReturn(
+                            $productId,
+                            auth()->id(),
+                            $reservation['quantity'],
+                            null,
+                            "Rollback saved order reservation - {$orderName}"
+                        );
+                    } catch (\Exception $rollbackError) {
+                        \Log::error('Failed to rollback stock reservation', [
+                            'product_id' => $productId,
+                            'order_name' => $orderName,
+                            'error' => $rollbackError->getMessage()
+                        ]);
+                    }
+                }
+            }
+            
+            throw $e;
         }
-        
-        $savedOrders = Session::get('saved_orders', []);
-        
-        // Check if order name already exists
-        if (isset($savedOrders[$orderName])) {
-            throw new \Exception('Nama pesanan sudah ada. Gunakan nama yang berbeda.');
-        }
-        
-        $savedOrders[$orderName] = [
-            'name' => $orderName,
-            'cart' => $cart,
-            'discounts' => $appliedDiscounts,
-            'created_at' => now(),
-            'totals' => $this->getCartTotals()
-        ];
-        
-        Session::put('saved_orders', $savedOrders);
-        return $savedOrders;
     }
 
     /**
-     * Load saved order to cart
+     * Load saved order to current cart - stock sudah di-reserve jadi tidak perlu adjust
      */
     public function loadSavedOrder($orderName)
     {
@@ -261,22 +431,114 @@ class TransactionService
         
         $savedOrder = $savedOrders[$orderName];
         
+        // Validate that saved order has required data
+        if (!isset($savedOrder['cart']) || empty($savedOrder['cart'])) {
+            throw new \Exception('Data pesanan tersimpan tidak valid.');
+        }
+        
+        // Verify stock reservations are still valid (optional check)
+        if (isset($savedOrder['stock_reservations'])) {
+            $stockService = app(\App\Services\StockService::class);
+            
+            foreach ($savedOrder['stock_reservations'] as $productId => $reservation) {
+                $currentStock = $stockService->getCurrentStock($productId);
+                if ($currentStock < 0) {
+                    \Log::warning('Saved order has negative stock', [
+                        'order_name' => $orderName,
+                        'product_id' => $productId,
+                        'current_stock' => $currentStock,
+                        'reserved_quantity' => $reservation['quantity']
+                    ]);
+                }
+            }
+        }
+        
+        // Clear current cart and load saved cart
+        $this->clearCart();
+        
+        // Restore cart dengan preserved pricing
         Session::put('cart', $savedOrder['cart']);
-        Session::put('applied_discounts', $savedOrder['discounts']);
+        
+        // Restore discounts if they exist
+        if (isset($savedOrder['cart_totals']['applied_discounts'])) {
+            Session::put('applied_discounts', $savedOrder['cart_totals']['applied_discounts']);
+        }
+        
+        \Log::info('Saved order loaded successfully', [
+            'order_name' => $orderName,
+            'items_count' => count($savedOrder['cart']),
+            'has_stock_reservations' => isset($savedOrder['stock_reservations']),
+            'created_at' => $savedOrder['created_at'] ?? 'unknown'
+        ]);
         
         return $savedOrder;
     }
 
     /**
-     * Delete saved order
+     * Delete saved order dan return reserved stock
      */
     public function deleteSavedOrder($orderName)
     {
-        $savedOrders = Session::get('saved_orders', []);
-        unset($savedOrders[$orderName]);
-        
-        Session::put('saved_orders', $savedOrders);
-        return $savedOrders;
+        try {
+            \DB::beginTransaction();
+            
+            $savedOrders = Session::get('saved_orders', []);
+            
+            if (!isset($savedOrders[$orderName])) {
+                throw new \Exception('Pesanan tersimpan tidak ditemukan.');
+            }
+            
+            $savedOrder = $savedOrders[$orderName];
+            
+            // Return reserved stock if exists
+            if (isset($savedOrder['stock_reservations'])) {
+                $stockService = app(\App\Services\StockService::class);
+                
+                foreach ($savedOrder['stock_reservations'] as $productId => $reservation) {
+                    try {
+                        $stockService->logCancellationReturn(
+                            $productId,
+                            auth()->id(),
+                            $reservation['quantity'],
+                            null,
+                            "Saved order deleted - return reservation - {$orderName}"
+                        );
+                        
+                        \Log::info('Stock returned for deleted saved order', [
+                            'order_name' => $orderName,
+                            'product_id' => $productId,
+                            'returned_quantity' => $reservation['quantity']
+                        ]);
+                    } catch (\Exception $stockError) {
+                        \Log::error('Failed to return stock for deleted saved order', [
+                            'order_name' => $orderName,
+                            'product_id' => $productId,
+                            'quantity' => $reservation['quantity'],
+                            'error' => $stockError->getMessage()
+                        ]);
+                        
+                        // Don't fail the deletion, just log the error
+                    }
+                }
+            }
+            
+            // Remove from saved orders
+            unset($savedOrders[$orderName]);
+            Session::put('saved_orders', $savedOrders);
+            
+            \DB::commit();
+            
+            \Log::info('Saved order deleted successfully', [
+                'order_name' => $orderName,
+                'had_stock_reservations' => isset($savedOrder['stock_reservations'])
+            ]);
+            
+            return $savedOrders;
+            
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -303,7 +565,7 @@ class TransactionService
     }
 
     /**
-     * Validate cart for checkout
+     * Validate cart for checkout - UPDATED: No stock validation, cashier independent
      */
     public function validateCartForCheckout()
     {
@@ -315,7 +577,7 @@ class TransactionService
         
         $errors = [];
         
-        // Check if products still exist and have sufficient stock
+        // Check if products still exist (but NO stock validation)
         foreach ($cart as $productId => $item) {
             $product = Product::find($productId);
             if (!$product) {
@@ -323,8 +585,8 @@ class TransactionService
                 continue;
             }
             
-            // In future iterations, we can add stock validation here
-            // For now, we'll assume stock is managed separately
+            // REMOVED: Stock validation - kasir independent dari stock management
+            // Big Pappa requirement: Transaksi dapat dilakukan meskipun stok 0
         }
         
         if (!empty($errors)) {
@@ -425,14 +687,26 @@ class TransactionService
                     'total' => $total,
                 ]);
 
-                // Reduce stock using StockService
+                // Reduce stock using new StockService with package support dan transaction reference
                 $stockService = app(\App\Services\StockService::class);
-                $stockService->reduceStock(
-                    $product->id,
-                    auth()->id(),
-                    $item['quantity'],
-                    'Penjualan - ' . $transaction->transaction_code
-                );
+                try {
+                    $stockService->logSale(
+                        $product->id,
+                        auth()->id(),
+                        $item['quantity'],
+                        $transaction->id,
+                        "Sale - {$transaction->transaction_code}"
+                    );
+                } catch (\Exception $stockError) {
+                    // Log stock reduction error but don't fail transaction
+                    // Big Pappa requirement: Transaction should be independent from stock management
+                    \Log::warning('Stock reduction failed during transaction', [
+                        'transaction_id' => $transaction->id,
+                        'product_id' => $product->id,
+                        'quantity' => $item['quantity'],
+                        'error' => $stockError->getMessage()
+                    ]);
+                }
             }
 
             // Mark transaction as completed
@@ -513,15 +787,26 @@ class TransactionService
                 throw new \Exception('Hanya transaksi pending yang dapat dibatalkan.');
             }
 
-            // Restore stock for each item
+            // Restore stock for each item menggunakan new system
             $stockService = app(\App\Services\StockService::class);
             foreach ($transaction->items as $item) {
-                $stockService->inputStockAwal(
-                    $item->product_id,
-                    auth()->id(),
-                    $item->quantity,
-                    'Pembatalan transaksi - ' . $transaction->transaction_code . ($reason ? ' - ' . $reason : '')
-                );
+                try {
+                    $stockService->logCancellationReturn(
+                        $item->product_id,
+                        auth()->id(),
+                        $item->quantity,
+                        $transaction->id,
+                        "Cancellation return - {$transaction->transaction_code}" . ($reason ? " - {$reason}" : "")
+                    );
+                } catch (\Exception $stockError) {
+                    // Log error but don't fail cancellation
+                    \Log::warning('Stock return failed during cancellation', [
+                        'transaction_id' => $transaction->id,
+                        'product_id' => $item->product_id,
+                        'quantity' => $item->quantity,
+                        'error' => $stockError->getMessage()
+                    ]);
+                }
             }
 
             // Mark transaction as cancelled
@@ -538,5 +823,42 @@ class TransactionService
             \DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Refresh cart prices based on order type and partner (for partner pricing)
+     */
+    public function refreshCartPrices($orderType, $partnerId = null)
+    {
+        $cart = $this->getCart();
+        
+        if (empty($cart)) {
+            return $cart;
+        }
+        
+        \Log::info('TransactionService: Refreshing cart prices', [
+            'order_type' => $orderType,
+            'partner_id' => $partnerId,
+            'cart_items_count' => count($cart)
+        ]);
+        
+        foreach ($cart as $productId => $item) {
+            $product = Product::find($productId);
+            if ($product) {
+                $appropriatePrice = $product->getAppropriatePrice($orderType, $partnerId);
+                $cart[$productId]['price'] = $appropriatePrice;
+                
+                \Log::info('TransactionService: Price updated for product', [
+                    'product_id' => $productId,
+                    'original_price' => $product->price,
+                    'new_price' => $appropriatePrice,
+                    'order_type' => $orderType,
+                    'partner_id' => $partnerId
+                ]);
+            }
+        }
+        
+        Session::put('cart', $cart);
+        return $cart;
     }
 } 

@@ -8,13 +8,11 @@ use App\Models\StockLog;
 use App\Services\StockService;
 use Livewire\WithPagination;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Carbon\Carbon;
-use Masmerise\Toaster\Toastable;
 
 class StockManagement extends Component
 {
-    use Toastable;
 
     public $activeTab = 'input-awal'; // input-awal, input-akhir, laporan
     
@@ -55,9 +53,11 @@ class StockManagement extends Component
         // Get reconciliation data if on report tab
         $reconciliation = [];
         if ($this->activeTab === 'laporan') {
-            $reconciliation = $this->stockService->getDailyReconciliation(
+            $reconciliationData = $this->stockService->getDailyReconciliation(
                 $this->reportDate ? Carbon::parse($this->reportDate) : null
             );
+            // Extract the reconciliation array from the returned data structure
+            $reconciliation = $reconciliationData['reconciliation'] ?? [];
         }
 
         return view('livewire.stock-management', [
@@ -71,11 +71,68 @@ class StockManagement extends Component
     public function initializeFormData()
     {
         $products = Product::all();
+        $targetDate = $this->useSelectedDate ? Carbon::parse($this->selectedDate) : Carbon::today();
         
         foreach ($products as $product) {
+            // Initialize with empty values first
             $this->stockQuantities[$product->id] = '';
             $this->notes[$product->id] = '';
+            
+            // Try to load existing data for the target date
+            if ($this->activeTab === 'input-awal') {
+                // Load existing stok awal data
+                $existingStockAwal = StockLog::forProduct($product->id)
+                    ->where('type', 'in')
+                    ->where('notes', 'like', '%Daily stock input - Initial%')
+                    ->forDate($targetDate)
+                    ->first();
+                
+                if ($existingStockAwal) {
+                    $this->stockQuantities[$product->id] = $existingStockAwal->quantity;
+                    // Extract notes without the system prefix
+                    $notes = $existingStockAwal->notes;
+                    if (strpos($notes, 'Daily stock input - Initial: ') === 0) {
+                        $customNotes = str_replace('Daily stock input - Initial: ' . $existingStockAwal->quantity, '', $notes);
+                        $this->notes[$product->id] = trim($customNotes);
+                    } else {
+                        $this->notes[$product->id] = $notes;
+                    }
+                }
+            } elseif ($this->activeTab === 'input-akhir') {
+                // Load existing stok akhir data
+                $existingStockAkhir = StockLog::forProduct($product->id)
+                    ->where('type', 'adjustment')
+                    ->where('notes', 'like', '%Daily stock input - Final%')
+                    ->forDate($targetDate)
+                    ->first();
+                
+                if ($existingStockAkhir) {
+                    $this->stockQuantities[$product->id] = $existingStockAkhir->quantity;
+                    // Extract custom notes from the system notes
+                    $notes = $existingStockAkhir->notes;
+                    if (strpos($notes, 'Daily stock input - Final:') === 0) {
+                        // Try to extract custom notes if they exist
+                        $parts = explode(', Difference:', $notes);
+                        if (count($parts) > 1) {
+                            // Check if there are custom notes before the difference part
+                            $beforeDiff = $parts[0];
+                            $systemPattern = '/Daily stock input - Final: \d+, Initial: \d+/';
+                            $customNotes = preg_replace($systemPattern, '', $beforeDiff);
+                            $this->notes[$product->id] = trim($customNotes, ', ');
+                        }
+                    } else {
+                        $this->notes[$product->id] = $notes;
+                    }
+                }
+            }
         }
+        
+        \Log::info('initializeFormData: Data loaded', [
+            'active_tab' => $this->activeTab,
+            'target_date' => $targetDate->format('Y-m-d'),
+            'loaded_quantities_count' => count(array_filter($this->stockQuantities)),
+            'sample_data' => array_slice($this->stockQuantities, 0, 3, true)
+        ]);
     }
 
     public function switchTab($tab)
@@ -84,6 +141,9 @@ class StockManagement extends Component
         
         if ($tab === 'laporan') {
             $this->reportDate = Carbon::today()->format('Y-m-d');
+        } else {
+            // Reload form data when switching to input tabs
+            $this->initializeFormData();
         }
     }
 
@@ -100,7 +160,10 @@ class StockManagement extends Component
 
         if (!$hasInput) {
             \Log::warning('inputStokAwal: No input provided');
-            $this->error('Pilih minimal satu produk dan masukkan kuantitas.');
+            LivewireAlert::title('Error!')
+                ->text('Pilih minimal satu produk dan masukkan kuantitas.')
+                ->error()
+                ->show();
             return;
         }
 
@@ -126,16 +189,26 @@ class StockManagement extends Component
             }
 
             if ($successCount > 0) {
-                $this->success('Stok awal berhasil diinput untuk ' . $successCount . ' produk.');
+                LivewireAlert::title('Berhasil!')
+                ->text('Stok awal berhasil diinput untuk ' . $successCount . ' produk.')
+                ->success()
+                ->show();
             }
             
             if (!empty($errors)) {
-                $this->warning('Beberapa produk gagal diinput: ' . implode(', ', $errors));
+                LivewireAlert::title('Error!')
+                ->text('Beberapa produk gagal diinput: ' . implode(', ', $errors))
+                ->error()
+                ->show();
             }
             
         } catch (\Exception $e) {
             \Log::error('inputStokAwal: Exception occurred', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->error('Terjadi kesalahan: ' . $e->getMessage());
+           
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 
@@ -160,7 +233,10 @@ class StockManagement extends Component
 
         if (!$hasInput) {
             \Log::warning('inputStokAkhir: No input provided');
-            $this->error('Pilih minimal satu produk dan masukkan kuantitas stok akhir.');
+            LivewireAlert::title('Error!')
+                ->text('Pilih minimal satu produk dan masukkan kuantitas stok akhir.')
+                ->error()
+                ->show();
             return;
         }
 
@@ -218,6 +294,7 @@ class StockManagement extends Component
 
             // Show result notification with emoji for better UX
             if ($successCount > 0) {
+                $today = Carbon::today()->format('d/m/Y');
                 $message = "✅ Stok akhir berhasil diinput untuk {$successCount} produk pada {$today}";
                 if ($totalDifference > 0) {
                     $message .= " dengan total selisih {$totalDifference} unit";
@@ -226,14 +303,20 @@ class StockManagement extends Component
                 $message .= '<strong>Produk yang berhasil:</strong><br>';
                 $message .= '• ' . implode('<br>• ', $successProducts);
                 
-                $this->success($message);
+                LivewireAlert::title('Berhasil!')
+                ->text($message)
+                ->success()
+                ->show();
                 
-                // Call comprehensive form reset
-                $this->forceFormReset();
+                // DON'T reset form - let user see their saved data persisting
+                // Users can manually reset if needed using the Reset Form button
             }
             
             if (!empty($errors)) {
-                $this->warning('Beberapa produk gagal diinput:<br>• ' . implode('<br>• ', $errors));
+                LivewireAlert::title('Error!')
+                ->text('Beberapa produk gagal diinput:<br>• ' . implode('<br>• ', $errors))
+                ->error()
+                ->show();
             }
             
             \Log::info('inputStokAkhir: Completed successfully', [
@@ -244,7 +327,11 @@ class StockManagement extends Component
             
         } catch (\Exception $e) {
             \Log::error('inputStokAkhir: Exception occurred', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->error('Terjadi kesalahan sistem: ' . $e->getMessage());
+            
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menyimpan stok akhir.')
+                ->error()
+                ->show();
         }
     }
 
@@ -302,9 +389,15 @@ class StockManagement extends Component
                 $this->reportDate ? Carbon::parse($this->reportDate) : null
             );
 
-            $this->success('Laporan rekonsiliasi siap diexport.');
+            LivewireAlert::title('Berhasil!')
+                ->text('Laporan rekonsiliasi siap diexport.')
+                ->success()
+                ->show();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat export: ' . $e->getMessage());
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat export: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 
@@ -321,6 +414,9 @@ class StockManagement extends Component
     public function toggleDateSelection()
     {
         $this->useSelectedDate = !$this->useSelectedDate;
+        
+        // Reinitialize data when date selection changes
+        $this->initializeFormData();
     }
 
     public function getProductsNeedingStockInputForDate($date)
@@ -329,21 +425,18 @@ class StockManagement extends Component
         $needingInput = [];
 
         foreach ($products as $product) {
-            $hasStockIn = StockLog::forProduct($product->id)
-                ->where('type', 'in')
-                ->whereDate('created_at', $date)
-                ->exists();
-                
-            $hasStockOut = StockLog::forProduct($product->id)
-                ->where('type', 'adjustment')
-                ->whereDate('created_at', $date)
-                ->exists();
+            // Use new StockService methods
+            $hasStockIn = $this->stockService->isStockInputDone($product->id, 'initial');
+            $hasStockOut = $this->stockService->isStockInputDone($product->id, 'final');
 
             $needingInput[] = [
                 'product' => $product,
                 'needs_stock_in' => !$hasStockIn,
                 'needs_stock_out' => !$hasStockOut,
-                'current_stock' => $this->stockService->getCurrentStock($product->id)
+                'current_stock' => $this->stockService->getCurrentStock($product->id),
+                'today_initial' => $this->stockService->getTodayInitialStock($product->id),
+                'today_sold' => $this->stockService->getTodaySoldQuantity($product->id),
+                'expected_stock' => $this->stockService->calculateExpectedStock($product->id)
             ];
         }
 
@@ -373,7 +466,10 @@ class StockManagement extends Component
         ]);
         
         // Show feedback to user
-        $this->info('Semua input telah dikosongkan.');
+        LivewireAlert::title('Berhasil!')
+            ->text('Semua input telah dikosongkan.')
+            ->success()
+            ->show();
     }
 
     public function forceFormReset()
@@ -399,8 +495,8 @@ class StockManagement extends Component
         // Approach 5: Force component refresh
         $this->dispatch('$refresh');
         
-        // Approach 7: Success notification to user
-        $this->success('Semua input telah dikosongkan.');
+        // Removed inappropriate success message - only show when user explicitly clears
+        // $this->success('Semua input telah dikosongkan.');
         
         \Log::info('forceFormReset: Comprehensive reset completed');
     }

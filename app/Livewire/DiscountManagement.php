@@ -7,13 +7,12 @@ use App\Models\Discount;
 use App\Models\Product;
 use App\Models\Category;
 use Livewire\WithPagination;
-use Livewire\Attributes\Rule;
-use Masmerise\Toaster\Toastable;
+use Livewire\Attributes\Rule; 
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class DiscountManagement extends Component
 {
-    use WithPagination, Toastable;
+    use WithPagination;
 
     // Form properties
     #[Rule('required|min:2|max:100')]
@@ -29,6 +28,7 @@ class DiscountManagement extends Component
     public $value = '';
     
     public $product_id = null;
+    public $order_type = null;
     public $is_active = true;
 
     // Component state
@@ -40,6 +40,15 @@ class DiscountManagement extends Component
     public $search = '';
     public $filterType = '';
     public $filterStatus = '';
+    public $filterOrderType = '';
+
+    // Order type options
+    public $orderTypeOptions = [
+        '' => 'Semua Jenis Pesanan',
+        'dine_in' => 'Makan di Tempat',
+        'take_away' => 'Bawa Pulang',
+        'online' => 'Online'
+    ];
 
     protected $paginationView = 'vendor.pagination.daisyui';
 
@@ -50,6 +59,7 @@ class DiscountManagement extends Component
             'type' => 'required|in:product,transaction',
             'value_type' => 'required|in:percentage,fixed',
             'value' => 'required|numeric|min:0',
+            'order_type' => 'nullable|in:dine_in,take_away,online',
             'is_active' => 'boolean',
         ];
 
@@ -81,6 +91,13 @@ class DiscountManagement extends Component
             ->when($this->filterStatus !== '', function ($query) {
                 $query->where('is_active', $this->filterStatus);
             })
+            ->when($this->filterOrderType !== '', function ($query) {
+                if ($this->filterOrderType === 'all') {
+                    $query->whereNull('order_type');
+                } else {
+                    $query->where('order_type', $this->filterOrderType);
+                }
+            })
             ->latest()
             ->paginate(10);
 
@@ -109,6 +126,7 @@ class DiscountManagement extends Component
         $this->value_type = $discount->value_type;
         $this->value = $discount->value;
         $this->product_id = $discount->product_id;
+        $this->order_type = $discount->order_type;
         $this->is_active = $discount->is_active;
         $this->isEditMode = true;
         $this->showModal = true;
@@ -125,6 +143,7 @@ class DiscountManagement extends Component
                 'value_type' => $this->value_type,
                 'value' => $this->value,
                 'product_id' => $this->type === 'product' ? $this->product_id : null,
+                'order_type' => $this->order_type ?: null,
                 'is_active' => $this->is_active,
             ];
 
@@ -132,17 +151,26 @@ class DiscountManagement extends Component
                 $discount = Discount::findOrFail($this->discountId);
                 $discount->update($data);
                 
-                $this->success('Diskon berhasil diperbarui.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Diskon \"{$this->name}\" berhasil diperbarui.")
+                ->success()
+                ->show();
             } else {
                 Discount::create($data);
                 
-                $this->success('Diskon berhasil ditambahkan.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Diskon \"{$this->name}\" berhasil ditambahkan.")
+                ->success()
+                ->show();
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat menyimpan diskon: ' . $e->getMessage());
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menyimpan diskon.')
+                ->error()
+                ->show();
         }
     }
 
@@ -153,9 +181,15 @@ class DiscountManagement extends Component
             $discount->update(['is_active' => !$discount->is_active]);
             
             $status = $discount->is_active ? 'diaktifkan' : 'dinonaktifkan';
-            $this->success('Diskon "' . $discount->name . '" berhasil ' . $status . '.');
+            LivewireAlert::title('Berhasil!')
+                ->text("Diskon \"{$discount->name}\" berhasil {$status}.")
+                ->success()
+                ->show();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat mengubah status diskon.');
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat mengubah status diskon.')
+                ->error()
+                ->show();
         }
     }
 
@@ -209,7 +243,10 @@ class DiscountManagement extends Component
             
             $discount->delete();
             
-            $this->success("Diskon \"{$discountName}\" berhasil dihapus.");
+            LivewireAlert::title('Berhasil!')
+                ->text("Diskon \"{$discountName}\" berhasil dihapus.")
+                ->success()
+                ->show();
                 
             $this->resetPage();
         } catch (\Exception $e) {
@@ -218,7 +255,7 @@ class DiscountManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            LivewireAlert::title('Error!')
+                LivewireAlert::title('Terjadi kesalahan!')
                 ->text('Terjadi kesalahan saat menghapus diskon.')
                 ->error()
                 ->show();
@@ -233,7 +270,7 @@ class DiscountManagement extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'type', 'value_type', 'value', 'product_id', 'is_active', 'discountId', 'isEditMode']);
+        $this->reset(['name', 'type', 'value_type', 'value', 'product_id', 'order_type', 'is_active', 'discountId', 'isEditMode']);
         $this->type = 'product'; // Default to product
         $this->value_type = 'percentage'; // Default to percentage
         $this->is_active = true; // Default to active
@@ -251,6 +288,11 @@ class DiscountManagement extends Component
     }
 
     public function updatedFilterStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterOrderType()
     {
         $this->resetPage();
     }

@@ -5,13 +5,13 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Category;
 use Livewire\WithPagination;
-use Livewire\Attributes\Rule;
-use Masmerise\Toaster\Toastable;
+use Livewire\Attributes\Rule; 
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
+
 
 class CategoryManagement extends Component
 {
-    use WithPagination, Toastable;
+    use WithPagination;
 
     public $title = 'Manajemen Kategori - KasirBraga';
 
@@ -77,20 +77,30 @@ class CategoryManagement extends Component
                     'description' => $this->description,
                 ]);
                 
-                $this->success('Kategori berhasil diperbarui.');
+                LivewireAlert::title('Berhasil!')
+                    ->text("Kategori \"{$this->name}\" berhasil diperbarui.")
+                    ->success()
+                    ->show();
             } else {
                 Category::create([
                     'name' => $this->name,
                     'description' => $this->description,
                 ]);
                 
-                $this->success('Kategori berhasil ditambahkan.');
+                LivewireAlert::title('Berhasil!')
+                ->text("Kategori \"{$this->name}\" berhasil ditambahkan.")
+                ->success()
+                ->show();
+                
             }
 
             $this->closeModal();
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->error('Terjadi kesalahan saat menyimpan kategori.');
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Terjadi kesalahan saat menyimpan kategori.')
+                ->error()
+                ->show();
         }
     }
 
@@ -135,7 +145,10 @@ class CategoryManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->error('Terjadi kesalahan saat memproses kategori.');
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat memproses kategori.')
+                ->error()
+                ->show();
         }
     }
 
@@ -153,7 +166,10 @@ class CategoryManagement extends Component
             
             $category->delete();
             
-            $this->success("Kategori \"{$categoryName}\" berhasil dihapus.");
+            LivewireAlert::title('Berhasil!')
+                ->text("Kategori \"{$categoryName}\" berhasil dihapus.")
+                ->success()
+                ->show();
                 
             $this->resetPage();
         } catch (\Exception $e) {
@@ -162,7 +178,10 @@ class CategoryManagement extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->error('Terjadi kesalahan saat menghapus kategori.');
+            LivewireAlert::title('Error!')
+                ->text('Terjadi kesalahan saat menghapus kategori.')
+                ->error()
+                ->show();
         }
     }
 

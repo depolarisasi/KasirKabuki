@@ -216,11 +216,11 @@
                                             $stockIn = \App\Models\StockLog::forProduct($product->id)
                                                 ->stockIn()
                                                 ->today()
-                                                ->sum('quantity');
+                                                ->sum('quantity_change');
                                             $stockOut = \App\Models\StockLog::forProduct($product->id)
                                                 ->stockOut()
                                                 ->today()
-                                                ->sum('quantity');
+                                                ->sum('quantity_change');
                                         @endphp
                                         <tr>
                                             <td>
@@ -375,28 +375,28 @@
                                                 <div class="avatar placeholder">
                                                     <div class="bg-accent text-accent-content rounded-full w-8">
                                                         <span
-                                                            class="text-xs">{{ substr($item['product']->name, 0, 1) }}</span>
+                                                            class="text-xs">{{ substr($item['product']->name ?? 'N/A', 0, 1) }}</span>
                                                     </div>
                                                 </div>
-                                                <div class="font-semibold">{{ $item['product']->name }}</div>
+                                                <div class="font-semibold">{{ $item['product']->name ?? 'N/A' }}</div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="badge badge-outline">{{ $item['product']->category->name }}
+                                            <div class="badge badge-outline">{{ $item['product']->category->name ?? 'N/A' }}
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="font-semibold text-success">{{ $item['stock_in'] }}</div>
+                                            <div class="font-semibold text-success">{{ $item['initial_stock'] ?? 0 }}</div>
                                         </td>
                                         <td>
-                                            <div class="font-semibold text-error">{{ $item['stock_out'] }}</div>
+                                            <div class="font-semibold text-error">{{ $item['sold'] ?? 0 }}</div>
                                         </td>
                                         <td>
-                                            <div class="font-semibold text-info">{{ $item['expected_stock'] }}</div>
+                                            <div class="font-semibold text-info">{{ ($item['initial_stock'] ?? 0) - ($item['sold'] ?? 0) }}</div>
                                         </td>
                                         <td>
-                                            @if ($item['actual_stock'] !== null)
-                                                <div class="font-semibold">{{ $item['actual_stock'] }}</div>
+                                            @if ($item['final_stock'] !== null)
+                                                <div class="font-semibold">{{ $item['final_stock'] }}</div>
                                             @else
                                                 <span class="text-base-content/50">Belum input</span>
                                             @endif
@@ -412,7 +412,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @if ($item['actual_stock'] !== null)
+                                            @if ($item['final_stock'] !== null)
                                                 @if ($item['difference'] == 0)
                                                     <div class="badge badge-success">Sesuai</div>
                                                 @elseif($item['difference'] > 0)

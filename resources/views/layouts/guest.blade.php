@@ -31,6 +31,7 @@
         
         <!-- Livewire Scripts -->
         @livewireScripts
+         
         
         <!-- SweetAlert -->
         @include('sweetalert::alert')

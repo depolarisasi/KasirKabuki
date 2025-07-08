@@ -7,14 +7,13 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Partner;
 use App\Models\Discount;
+use App\Models\ProductPartnerPrice;
 use App\Services\TransactionService;
 use Livewire\Attributes\Rule;
-use RealRashid\SweetAlert\Facades\Alert;
-use Masmerise\Toaster\Toastable;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class CashierComponent extends Component
 {
-    use Toastable;
 
     public $title = 'Kasir - KasirBraga';
     
@@ -23,14 +22,26 @@ class CashierComponent extends Component
     public $orderType = 'dine_in'; // dine_in, take_away, online
     public $selectedPartner = null;
     
+    // Order type labels for display
+    public $orderTypeLabels = [
+        'dine_in' => 'Makan di Tempat',
+        'take_away' => 'Bawa Pulang',
+        'online' => 'Online'
+    ];
+    
     // Saved order modal
     public $showSaveOrderModal = false;
     public $saveOrderName = '';
+    public $orderName = '';
     public $showLoadOrderModal = false;
     
     // Discount modal
     public $showDiscountModal = false;
     public $selectedDiscount = null;
+    
+    // Ad-hoc discount properties
+    public $adhocDiscountPercentage = 0;
+    public $adhocDiscountAmount = 0;
     
     // Checkout modal
     public $showCheckoutModal = false;
@@ -92,18 +103,48 @@ class CashierComponent extends Component
             'cartData' => $cartData,
             'availableDiscounts' => $availableDiscounts,
             'savedOrders' => $savedOrders,
-            'partners' => $partners
+            'partners' => $partners,
+            'orderTypeLabels' => $this->orderTypeLabels
         ]);
     }
 
     public function addToCart($productId)
     {
         try {
-            $this->transactionService->addToCart($productId, 1);
-            $this->success('Produk ditambahkan ke keranjang.');
+            $product = Product::with('category')->findOrFail($productId);
+            
+            // Get discounted price based on order type and selected partner (includes auto-discount)
+            $price = $product->getDiscountedPrice($this->orderType, $this->selectedPartner);
+            
+            \Log::info('CashierComponent: Adding to cart with auto-discount pricing', [
+                'product_id' => $productId,
+                'order_type' => $this->orderType,
+                'selected_partner' => $this->selectedPartner,
+                'original_price' => $product->price,
+                'appropriate_price' => $product->getAppropriatePrice($this->orderType, $this->selectedPartner),
+                'discounted_price' => $price,
+                'has_discount' => $product->hasActiveDiscount($this->orderType),
+                'discount_amount' => $product->getDiscountAmount($this->orderType, $this->selectedPartner)
+            ]);
+            
+            $this->transactionService->addToCartWithPrice($productId, 1, $price);
+            
+            $message = 'Produk ditambahkan ke keranjang.';
+            if ($product->hasActiveDiscount($this->orderType)) {
+                $discount = $product->getApplicableDiscount($this->orderType);
+                $message .= " Diskon {$discount->formatted_value} otomatis diterapkan.";
+            }
+            
+            LivewireAlert::title('Berhasil!')
+            ->text($message)
+            ->success()
+            ->show();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menambahkan produk ke keranjang.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -113,11 +154,17 @@ class CashierComponent extends Component
             $this->transactionService->updateCartQuantity($productId, $quantity);
             
             if ($quantity <= 0) {
-                $this->info('Produk dihapus dari keranjang.');
+                LivewireAlert::title('Berhasil!')
+                ->text('Produk dihapus dari keranjang.')
+                ->success() 
+                ->show();
             }
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memperbarui keranjang.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()   
+                ->show();
         }
     }
 
@@ -128,7 +175,10 @@ class CashierComponent extends Component
             $this->info('Produk dihapus dari keranjang.');
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus produk dari keranjang.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -136,32 +186,100 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->clearCart();
-            $this->success('Keranjang dikosongkan.');
+            LivewireAlert::title('Berhasil!')
+            ->text('Keranjang dikosongkan.')
+            ->success()
+            ->show();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat mengosongkan keranjang.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
     public function updatedOrderType()
     {
+        \Log::info('CashierComponent: Order type changed', [
+            'new_order_type' => $this->orderType,
+            'selected_partner' => $this->selectedPartner
+        ]);
+        
         // Clear applied discounts if switching to online
         if ($this->orderType === 'online') {
             $appliedDiscounts = $this->transactionService->getCartTotals()['applied_discounts'];
             foreach ($appliedDiscounts as $discountId => $discountData) {
                 $this->transactionService->removeDiscount($discountId);
             }
-            $this->info('Diskon dihapus karena pesanan online tidak dapat menggunakan diskon.');
+            if (!empty($appliedDiscounts)) {
+                LivewireAlert::title('Info')
+                ->text('Diskon dihapus karena pesanan online tidak dapat menggunakan diskon.')
+                ->warning()
+                ->show();
+            }
+        } else {
+            // Remove discounts when switching away from online
+            $appliedDiscounts = $this->transactionService->getCartTotals()['applied_discounts'];
+            foreach ($appliedDiscounts as $discountId => $discountData) {
+                $this->transactionService->removeDiscount($discountId);
+            }
+            
+            if (!empty($appliedDiscounts)) {
+                LivewireAlert::title('Info')
+                ->text('Diskon dihapus karena jenis pesanan berubah.')
+                ->warning()
+                ->show();
+            }
         }
         
-        // Reset partner selection
-        $this->selectedPartner = null;
+        // Reset partner selection when switching away from online
+        if ($this->orderType !== 'online') {
+            $this->selectedPartner = null;
+        }
+        
+        // Reset ad-hoc discount inputs
+        $this->adhocDiscountPercentage = 0;
+        $this->adhocDiscountAmount = 0;
+        
+        // Refresh cart prices based on new order type
+        $this->transactionService->refreshCartPrices($this->orderType, $this->selectedPartner);
+        
+        \Log::info('CashierComponent: Cart prices refreshed after order type change');
+    }
+
+    public function updatedSelectedPartner()
+    {
+        \Log::info('CashierComponent: Partner selection changed', [
+            'order_type' => $this->orderType,
+            'new_partner' => $this->selectedPartner
+        ]);
+        
+        // Only refresh if order type is online
+        if ($this->orderType === 'online') {
+            // Refresh cart prices for partner pricing
+            $this->transactionService->refreshCartPrices($this->orderType, $this->selectedPartner);
+            
+            if ($this->selectedPartner) {
+                $partner = Partner::find($this->selectedPartner);
+                
+                LivewireAlert::title('Partner Dipilih')
+                ->text("Harga partner untuk {$partner->name} telah diterapkan ke keranjang.")
+                ->info()
+                ->show();
+            }
+            
+            \Log::info('CashierComponent: Cart prices refreshed after partner change');
+        }
     }
 
     public function openDiscountModal()
     {
         if ($this->orderType === 'online') {
-            $this->error('Diskon tidak dapat diterapkan pada pesanan online.');
+            LivewireAlert::title('Error!')
+                ->text('Diskon tidak dapat diterapkan pada pesanan online.')
+                ->error()
+                ->show();
             return;
         }
         
@@ -178,11 +296,17 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->applyDiscount($discountId, $this->orderType);
-            $this->success('Diskon berhasil diterapkan.');
+            LivewireAlert::title('Berhasil!')
+            ->text('Diskon berhasil diterapkan.')
+            ->success()
+            ->show();
             $this->closeDiscountModal();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -190,10 +314,65 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->removeDiscount($discountId);
-            $this->info('Diskon dihapus dari keranjang.');
+            LivewireAlert::title('Berhasil!')
+            ->text('Diskon dihapus.')
+            ->success()
+            ->show();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus diskon.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
+
+    public function applyAdhocDiscount()
+    {
+        try {
+            // Validate inputs
+            if ((!$this->adhocDiscountPercentage && !$this->adhocDiscountAmount) || 
+                ($this->adhocDiscountPercentage && $this->adhocDiscountAmount)) {
+                LivewireAlert::title('Error!')
+                ->text('Pilih salah satu: diskon % atau diskon nominal.')
+                ->error()
+                ->show();
+                return;
+            }
+
+            if ($this->orderType === 'online') {
+                LivewireAlert::title('Error!')
+                ->text('Diskon tidak dapat diterapkan pada pesanan online.')
+                ->error()
+                ->show();
+                return;
+            }
+
+            // Apply the ad-hoc discount
+            if ($this->adhocDiscountPercentage > 0) {
+                $this->transactionService->applyAdhocDiscount('percentage', $this->adhocDiscountPercentage, $this->orderType);
+                LivewireAlert::title('Berhasil!')
+                ->text("Diskon {$this->adhocDiscountPercentage}% berhasil diterapkan.")
+                ->success()
+                ->show();
+            } else if ($this->adhocDiscountAmount > 0) {
+                $this->transactionService->applyAdhocDiscount('nominal', $this->adhocDiscountAmount, $this->orderType);
+                LivewireAlert::title('Berhasil!')
+                ->text("Diskon Rp " . number_format($this->adhocDiscountAmount, 0, ',', '.') . " berhasil diterapkan.")
+                ->success()
+                ->show();
+            }
+
+            // Reset inputs
+            $this->adhocDiscountPercentage = 0;
+            $this->adhocDiscountAmount = 0;
+
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -201,34 +380,47 @@ class CashierComponent extends Component
     {
         $cart = $this->transactionService->getCart();
         if (empty($cart)) {
-            $this->error('Keranjang kosong, tidak ada yang disimpan.');
+            LivewireAlert::title('Error!')
+            ->text('Keranjang kosong, tidak ada yang disimpan.')
+            ->error()
+            ->show();
             return;
         }
         
         $this->showSaveOrderModal = true;
-        $this->saveOrderName = '';
+        $this->orderName = ''; // Reset orderName for new save
     }
 
     public function closeSaveOrderModal()
     {
         $this->showSaveOrderModal = false;
-        $this->saveOrderName = '';
+        $this->orderName = ''; // Clear orderName when closing
     }
 
     public function saveOrder()
     {
-        if (empty(trim($this->saveOrderName))) {
-            $this->error('Nama pesanan tidak boleh kosong.');
+        // Validate orderName is not empty
+        if (empty(trim($this->orderName))) {
+            LivewireAlert::title('Error!')
+            ->text('Nama pesanan tidak boleh kosong.')
+            ->error()
+            ->show();
             return;
         }
         
         try {
-            $this->transactionService->saveOrder($this->saveOrderName);
-            $this->success('Pesanan berhasil disimpan dengan nama "' . $this->saveOrderName . '".');
+            $this->transactionService->saveOrder($this->orderName);
+            LivewireAlert::title('Berhasil!')
+            ->text('Pesanan berhasil disimpan dengan nama "' . $this->orderName . '".')
+            ->success()
+            ->show();
             $this->closeSaveOrderModal();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyimpan pesanan.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -246,11 +438,17 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->loadSavedOrder($orderName);
-            $this->success('Pesanan "' . $orderName . '" berhasil dimuat.');
+            LivewireAlert::title('Berhasil!')
+            ->text('Pesanan "' . $orderName . '" berhasil dimuat.')
+            ->success()
+            ->show();
             $this->closeLoadOrderModal();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memuat pesanan.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -258,10 +456,16 @@ class CashierComponent extends Component
     {
         try {
             $this->transactionService->deleteSavedOrder($orderName);
-            $this->success('Pesanan "' . $orderName . '" berhasil dihapus.');
+                LivewireAlert::title('Berhasil!')
+            ->text('Pesanan "' . $orderName . '" berhasil dihapus.')
+            ->success()
+            ->show();
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus pesanan.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -278,7 +482,10 @@ class CashierComponent extends Component
             
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat memproses checkout.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -287,7 +494,10 @@ class CashierComponent extends Component
         try {
             $cart = $this->transactionService->getCart();
             if (empty($cart)) {
-                $this->error('Keranjang kosong, tidak ada yang di-checkout.');
+                LivewireAlert::title('Error!')
+                ->text('Keranjang kosong, tidak ada yang di-checkout.')
+                ->error()
+                ->show();
                 return;
             }
             
@@ -322,7 +532,10 @@ class CashierComponent extends Component
             ]);
             
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat membuka modal checkout.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 
@@ -337,20 +550,37 @@ class CashierComponent extends Component
 
     public function updatedPaymentMethod()
     {
+        \Log::info('CashierComponent: Payment method updated', [
+            'new_method' => $this->paymentMethod,
+            'current_amount' => $this->paymentAmount,
+            'final_total' => $this->checkoutSummary['cart_totals']['final_total'] ?? 0
+        ]);
+
         // Reset payment amount when payment method changes
-        if ($this->paymentMethod === 'qris') {
-            // For QRIS, payment amount equals final total (exact payment)
+        if (in_array($this->paymentMethod, ['qris', 'aplikasi'])) {
+            // For QRIS and Aplikasi, payment amount equals final total (exact payment)
             $this->paymentAmount = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
+            \Log::info('CashierComponent: QRIS/Aplikasi selected - amount set to final total', [
+                'method' => $this->paymentMethod,
+                'amount' => $this->paymentAmount
+            ]);
         } else {
             // For cash, reset to 0 so user can input
             $this->paymentAmount = 0;
+            \Log::info('CashierComponent: Cash selected - amount reset to 0');
         }
+
+        // Force UI refresh to ensure immediate update
+        $this->dispatch('paymentMethodChanged', [
+            'method' => $this->paymentMethod,
+            'amount' => $this->paymentAmount
+        ]);
     }
 
     public function getKembalianProperty()
     {
-        if ($this->paymentMethod === 'qris') {
-            return 0; // QRIS always exact payment
+        if (in_array($this->paymentMethod, ['qris', 'aplikasi'])) {
+            return 0; // QRIS and Aplikasi always exact payment
         }
         
         $finalTotal = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
@@ -361,8 +591,11 @@ class CashierComponent extends Component
     {
         try {
             // Validate payment method
-            if (!in_array($this->paymentMethod, ['cash', 'qris'])) {
-                $this->error('Metode pembayaran tidak valid.');
+            if (!in_array($this->paymentMethod, ['cash', 'qris', 'aplikasi'])) {
+                LivewireAlert::title('Error!')
+                ->text('Metode pembayaran tidak valid.')
+                ->error()
+                ->show();
                 return;
             }
 
@@ -371,12 +604,18 @@ class CashierComponent extends Component
                 $finalTotal = $this->checkoutSummary['cart_totals']['final_total'] ?? 0;
                 
                 if ($this->paymentAmount <= 0) {
-                    $this->error('Jumlah uang yang diterima harus diisi.');
+                    LivewireAlert::title('Error!')
+                    ->text('Jumlah uang yang diterima harus diisi.')
+                    ->error()
+                    ->show();
                     return;
                 }
                 
                 if ($this->paymentAmount < $finalTotal) {
-                    $this->error('Jumlah uang yang diterima kurang dari total pembayaran.');
+                    LivewireAlert::title('Error!')
+                    ->text('Jumlah uang yang diterima kurang dari total pembayaran.')
+                    ->error()
+                    ->show();
                     return;
                 }
             }
@@ -389,12 +628,25 @@ class CashierComponent extends Component
                 $this->checkoutNotes
             );
             
+            // Broadcast real-time event for sales report updates
+            $this->dispatch('transaction-completed', [
+                'transaction_id' => $transaction->id,
+                'transaction_code' => $transaction->transaction_code,
+                'final_total' => $transaction->final_total,
+                'created_at' => $transaction->created_at->toISOString(),
+                'order_type' => $transaction->order_type,
+                'payment_method' => $transaction->payment_method
+            ])->to(SalesReportComponent::class);
+            
             // Show success notification and receipt modal
             $this->completedTransaction = $transaction;
             $this->showReceiptModal = true;
             $this->closeCheckoutModal();
             
-            $this->success('Transaksi berhasil diselesaikan dengan kode: ' . $transaction->transaction_code);
+            LivewireAlert::title('Berhasil!')
+                ->text('Transaksi berhasil diselesaikan dengan kode: ' . $transaction->transaction_code)
+                ->success()
+                ->show();
             
         } catch (\Exception $e) {
             \Log::error('CashierComponent: Error in completeTransaction', [
@@ -403,7 +655,10 @@ class CashierComponent extends Component
             ]);
             
             $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menyelesaikan transaksi.';
-            $this->error($errorMessage);
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
         }
     }
 

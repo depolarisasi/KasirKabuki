@@ -58,7 +58,7 @@
     <div class="card bg-base-300 shadow-lg">
         <div class="card-body">
             <!-- Filter Section -->
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                 <!-- Search -->
                 <div class="form-control">
                     <label class="label">
@@ -66,6 +66,19 @@
                     </label>
                     <input wire:model.live="search" type="text" placeholder="Cari pengeluaran..." 
                            class="input input-bordered w-full" />
+                </div>
+
+                <!-- Filter by Category -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Kategori</span>
+                    </label>
+                    <select wire:model.live="filterCategory" class="select select-bordered w-full">
+                        <option value="">Semua Kategori</option>
+                        @foreach($categoryOptions as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <!-- Filter by Specific Date -->
@@ -127,6 +140,7 @@
                         <tr>
                             <th>No</th>
                             <th>Tanggal</th>
+                            <th>Kategori</th>
                             <th>Deskripsi</th>
                             <th>Jumlah</th>
                             <th>Dicatat Oleh</th>
@@ -144,6 +158,11 @@
                                         @if($expense->is_today)
                                             <div class="badge badge-success badge-xs">Hari Ini</div>
                                         @endif
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="badge {{ $expense->category_badge }} badge-sm">
+                                        {{ $expense->category_label }}
                                     </div>
                                 </td>
                                 <td>
@@ -197,14 +216,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-8">
+                                <td colspan="8" class="text-center py-8">
                                     <div class="flex flex-col items-center">
                                         <svg class="w-12 h-12 text-base-content/30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                                         </svg>
                                         <p class="text-base-content/70">
-                                            @if($search || $filterDate || $filterMonth)
+                                            @if($search || $filterDate || $filterMonth || $filterCategory)
                                                 Tidak ada pengeluaran yang sesuai dengan filter
                                             @else
                                                 Belum ada pengeluaran tercatat.
@@ -252,6 +271,24 @@
                         <input wire:model="date" type="date" 
                                class="input input-bordered w-full @error('date') input-error @enderror" />
                         @error('date')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                    </div>
+
+                    <!-- Expense Category -->
+                    <div class="form-control w-full mb-4">
+                        <label class="label">
+                            <span class="label-text">Kategori Pengeluaran <span class="text-error">*</span></span>
+                        </label>
+                        <select wire:model="category" class="select select-bordered w-full @error('category') select-error @enderror">
+                            <option value="">Pilih Kategori</option>
+                            @foreach($categoryOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('category')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </label>

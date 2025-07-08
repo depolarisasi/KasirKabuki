@@ -10,30 +10,51 @@ use Illuminate\Support\Facades\DB;
 class StockService
 {
     /**
-     * Input stok awal untuk produk tertentu
+     * Get current stock untuk product - SINGLE SOURCE OF TRUTH
+     */
+    public function getCurrentStock($productId)
+    {
+        return StockLog::getCurrentStock($productId);
+    }
+
+    /**
+     * Input stok awal menggunakan new StockLog system
      */
     public function inputStockAwal($productId, $userId, $quantity, $notes = null)
     {
         try {
             DB::beginTransaction();
 
-            // Check if there's already a stock input for today
+            // Check if there's already initial stock input for today
             $existingStock = StockLog::forProduct($productId)
-                ->stockIn()
+                ->where('type', StockLog::TYPE_INITIAL_STOCK)
                 ->today()
                 ->first();
 
             if ($existingStock) {
-                throw new \Exception('Stok awal untuk produk ini sudah diinput hari ini.');
+                // Update existing entry
+                $currentStock = $this->getCurrentStock($productId);
+                // Calculate difference from existing entry
+                $stockBefore = $currentStock - $existingStock->quantity_change;
+                $stockAfter = $stockBefore + $quantity;
+                
+                $existingStock->update([
+                    'quantity_change' => $quantity,
+                    'stock_after_change' => $stockAfter,
+                    'notes' => $notes ?: "Daily stock input - Initial: {$quantity}",
+                    'updated_at' => now()
+                ]);
+                
+                $stockLog = $existingStock;
+            } else {
+                // Create new stock entry using enhanced system
+                $stockLog = StockLog::logInitialStock(
+                    $productId,
+                    $userId,
+                    $quantity,
+                    $notes ?: "Daily stock input - Initial: {$quantity}"
+                );
             }
-
-            $stockLog = StockLog::logMovement(
-                $productId, 
-                $userId, 
-                'in', 
-                $quantity, 
-                $notes ?: 'Stok awal harian'
-            );
 
             DB::commit();
             return $stockLog;
@@ -45,43 +66,56 @@ class StockService
     }
 
     /**
-     * Input stok akhir dan hitung selisih
+     * Input stok akhir dengan reconciliation menggunakan new system
      */
     public function inputStockAkhir($productId, $userId, $actualQuantity, $notes = null)
     {
         try {
             DB::beginTransaction();
 
-            // Calculate expected stock based on movements
-            $expectedStock = $this->calculateExpectedStock($productId);
+            // Get initial stock for today
+            $initialStock = $this->getTodayInitialStock($productId);
+            
+            // Get sold quantity today
+            $soldToday = $this->getTodaySoldQuantity($productId);
+            
+            // Calculate expected stock
+            $expectedStock = $initialStock - $soldToday;
             
             // Calculate difference
             $difference = $actualQuantity - $expectedStock;
 
-            // Log the final stock count
-            $finalStockLog = StockLog::create([
-                'product_id' => $productId,
-                'user_id' => $userId,
-                'type' => 'adjustment',
-                'quantity' => $actualQuantity,
-                'notes' => $notes ?: 'Stok akhir harian - Fisik: ' . $actualQuantity . ', Expected: ' . $expectedStock . ', Selisih: ' . $difference,
-            ]);
-
-            // If there's a difference, log it as adjustment
+            // Create adjustment if there's a difference
             if ($difference != 0) {
-                $adjustmentLog = StockLog::create([
+                $adjustmentNotes = "Daily stock input - Final: {$actualQuantity}, Initial: {$initialStock}, Expected: {$expectedStock}, Difference: {$difference}";
+                if ($notes) {
+                    $adjustmentNotes .= ", Notes: {$notes}";
+                }
+
+                $stockLog = StockLog::logAdjustment(
+                    $productId,
+                    $userId,
+                    $difference, // positive if stock is more than expected, negative if less
+                    $adjustmentNotes
+                );
+            } else {
+                // No difference - just log for tracking
+                $stockLog = StockLog::create([
                     'product_id' => $productId,
                     'user_id' => $userId,
-                    'type' => 'adjustment',
-                    'quantity' => abs($difference),
-                    'notes' => 'Penyesuaian stok akhir. Selisih: ' . ($difference > 0 ? '+' : '-') . abs($difference),
+                    'type' => StockLog::TYPE_ADJUSTMENT,
+                    'quantity_change' => 0,
+                    'stock_after_change' => $actualQuantity,
+                    'notes' => "Daily stock input - Final: {$actualQuantity}, No adjustment needed" . ($notes ? ", Notes: {$notes}" : "")
                 ]);
             }
 
             DB::commit();
-
+            
             return [
-                'stock_log' => $finalStockLog,
+                'stock_log' => $stockLog,
+                'initial_stock' => $initialStock,
+                'sold_today' => $soldToday,
                 'expected_stock' => $expectedStock,
                 'actual_stock' => $actualQuantity,
                 'difference' => $difference
@@ -94,111 +128,97 @@ class StockService
     }
 
     /**
-     * Kurangi stok ketika produk terjual
+     * Get today's initial stock untuk product
      */
-    public function reduceStock($productId, $userId, $quantity, $notes = null)
+    public function getTodayInitialStock($productId)
     {
-        try {
-            // Check if there's enough stock
-            $currentStock = $this->getCurrentStock($productId);
-            
-            if ($currentStock < $quantity) {
-                throw new \Exception('Stok tidak mencukupi. Stok tersedia: ' . $currentStock);
-            }
-
-            return StockLog::logMovement(
-                $productId,
-                $userId,
-                'out',
-                $quantity,
-                $notes ?: 'Pengurangan stok - penjualan'
-            );
-
-        } catch (\Exception $e) {
-            throw $e;
-        }
-    }
-
-    /**
-     * Dapatkan stok saat ini untuk produk
-     */
-    public function getCurrentStock($productId)
-    {
-        return StockLog::calculateStockBalance($productId);
-    }
-
-    /**
-     * Calculate expected stock based on today's movements
-     */
-    public function calculateExpectedStock($productId)
-    {
-        $todayIn = StockLog::forProduct($productId)
-            ->stockIn()
+        $initialStock = StockLog::forProduct($productId)
+            ->where('type', StockLog::TYPE_INITIAL_STOCK)
             ->today()
-            ->sum('quantity');
+            ->sum('quantity_change');
 
-        $todayOut = StockLog::forProduct($productId)
-            ->stockOut()
-            ->today()
-            ->sum('quantity');
-
-        return $todayIn - $todayOut;
+        return $initialStock;
     }
 
     /**
-     * Dapatkan laporan rekonsiliasi stok harian
+     * Get today's sold quantity untuk product
+     */
+    public function getTodaySoldQuantity($productId)
+    {
+        return StockLog::forProduct($productId)
+            ->where('type', StockLog::TYPE_SALE)
+            ->today()
+            ->sum('quantity_change');
+    }
+
+    /**
+     * Get daily reconciliation dengan new data structure
      */
     public function getDailyReconciliation($date = null)
     {
         $date = $date ?: Carbon::today();
-        
         $products = Product::with('category')->get();
         $reconciliation = [];
 
         foreach ($products as $product) {
-            $stockIn = StockLog::forProduct($product->id)
-                ->stockIn()
+            // Get initial stock untuk the date
+            $initialStock = StockLog::forProduct($product->id)
+                ->where('type', StockLog::TYPE_INITIAL_STOCK)
                 ->forDate($date)
-                ->sum('quantity');
+                ->sum('quantity_change');
 
-            $stockOut = StockLog::forProduct($product->id)
-                ->stockOut()
+            // Get sold quantity untuk the date
+            $soldQuantity = StockLog::forProduct($product->id)
+                ->where('type', StockLog::TYPE_SALE)
                 ->forDate($date)
-                ->sum('quantity');
+                ->sum('quantity_change');
 
-            $adjustments = StockLog::forProduct($product->id)
-                ->adjustments()
+            // Get final stock from adjustments/manual input
+            $finalStockLog = StockLog::forProduct($product->id)
+                ->where('type', StockLog::TYPE_ADJUSTMENT)
+                ->where('notes', 'like', '%Daily stock input - Final%')
                 ->forDate($date)
-                ->get();
+                ->latest()
+                ->first();
 
-            // Get final stock adjustment (stok akhir)
-            $finalStock = $adjustments->where('notes', 'like', '%Stok akhir harian%')->first();
-            $actualStock = $finalStock ? $finalStock->quantity : null;
-
-            $expectedStock = $stockIn - $stockOut;
-            $difference = $actualStock !== null ? $actualStock - $expectedStock : null;
+            $finalStock = $finalStockLog ? $finalStockLog->stock_after_change : null;
+            
+            // Calculate expected vs actual difference
+            $expectedStock = $initialStock - $soldQuantity;
+            $difference = $finalStock !== null ? ($finalStock - $expectedStock) : 0;
 
             $reconciliation[] = [
                 'product' => $product,
-                'stock_in' => $stockIn,
-                'stock_out' => $stockOut,
+                'initial_stock' => $initialStock,
+                'sold' => $soldQuantity,
+                'final_stock' => $finalStock ?? $expectedStock,
                 'expected_stock' => $expectedStock,
-                'actual_stock' => $actualStock,
                 'difference' => $difference,
                 'movements' => StockLog::getDailyMovements($product->id, $date)
             ];
         }
 
-        return $reconciliation;
+        return ['reconciliation' => $reconciliation];
     }
 
     /**
-     * Get stock movements for a date range
+     * Calculate expected stock untuk product
+     */
+    public function calculateExpectedStock($productId)
+    {
+        $initialStock = $this->getTodayInitialStock($productId);
+        $soldToday = $this->getTodaySoldQuantity($productId);
+        
+        return $initialStock - $soldToday;
+    }
+
+    /**
+     * Get stock movements for a date range menggunakan new system
      */
     public function getStockMovements($startDate = null, $endDate = null)
     {
         $query = StockLog::query()
-            ->with(['product.category', 'user'])
+            ->with(['product.category', 'user', 'transaction'])
             ->orderBy('created_at', 'desc');
 
         if ($startDate && $endDate) {
@@ -213,18 +233,25 @@ class StockService
     }
 
     /**
-     * Check if stock input is already done for today
+     * Check if stock input is already done for today using new types
      */
-    public function isStockInputDone($productId, $type = 'in')
+    public function isStockInputDone($productId, $type = 'initial')
     {
-        return StockLog::forProduct($productId)
-            ->where('type', $type)
-            ->today()
-            ->exists();
+        $stockType = $type === 'initial' ? StockLog::TYPE_INITIAL_STOCK : StockLog::TYPE_ADJUSTMENT;
+        
+        $query = StockLog::forProduct($productId)
+            ->where('type', $stockType)
+            ->today();
+
+        if ($type === 'final') {
+            $query->where('notes', 'like', '%Daily stock input - Final%');
+        }
+
+        return $query->exists();
     }
 
     /**
-     * Get products that need stock input
+     * Get products that need stock input dengan enhanced information
      */
     public function getProductsNeedingStockInput()
     {
@@ -232,17 +259,280 @@ class StockService
         $needingInput = [];
 
         foreach ($products as $product) {
-            $hasStockIn = $this->isStockInputDone($product->id, 'in');
-            $hasStockOut = $this->isStockInputDone($product->id, 'adjustment'); // For final stock
+            $hasInitialStock = $this->isStockInputDone($product->id, 'initial');
+            $hasFinalStock = $this->isStockInputDone($product->id, 'final');
 
             $needingInput[] = [
                 'product' => $product,
-                'needs_stock_in' => !$hasStockIn,
-                'needs_stock_out' => !$hasStockOut,
-                'current_stock' => $this->getCurrentStock($product->id)
+                'needs_initial_stock' => !$hasInitialStock,
+                'needs_final_stock' => !$hasFinalStock,
+                'current_stock' => $this->getCurrentStock($product->id),
+                'today_initial' => $this->getTodayInitialStock($product->id),
+                'today_sold' => $this->getTodaySoldQuantity($product->id),
+                'expected_stock' => $this->calculateExpectedStock($product->id)
             ];
         }
 
         return $needingInput;
+    }
+
+    /**
+     * Log product sale dengan package support
+     */
+    public function logSale($productId, $userId, $quantity, $transactionId = null, $notes = null)
+    {
+        $product = Product::find($productId);
+        
+        if (!$product) {
+            throw new \Exception("Product not found");
+        }
+
+        return $product->reduceStockForSale($quantity, $userId, $transactionId, $notes);
+    }
+
+    /**
+     * Log cancellation return dengan package support
+     */
+    public function logCancellationReturn($productId, $userId, $quantity, $transactionId = null, $notes = null)
+    {
+        $product = Product::find($productId);
+        
+        if (!$product) {
+            throw new \Exception("Product not found");
+        }
+
+        return $product->returnStockForCancellation($quantity, $userId, $transactionId, $notes);
+    }
+
+    /**
+     * Check stock availability untuk sale with package support
+     */
+    public function checkStockAvailability($productId, $quantity = 1)
+    {
+        $product = Product::find($productId);
+        
+        if (!$product) {
+            return ['available' => false, 'message' => 'Product not found'];
+        }
+
+        if ($product->isPackageProduct()) {
+            $status = $product->getPackageStockStatus($quantity);
+            
+            return [
+                'available' => $status['is_sufficient'],
+                'is_package' => true,
+                'max_available' => $status['can_make_quantity'],
+                'components' => $status['components'] ?? [],
+                'message' => $status['is_sufficient'] 
+                    ? "Package tersedia" 
+                    : "Stok component tidak mencukupi"
+            ];
+        }
+
+        $currentStock = $this->getCurrentStock($productId);
+        
+        return [
+            'available' => $currentStock >= $quantity,
+            'is_package' => false,
+            'current_stock' => $currentStock,
+            'max_available' => $currentStock,
+            'message' => $currentStock >= $quantity 
+                ? "Stok tersedia" 
+                : "Stok tidak mencukupi"
+        ];
+    }
+
+    /**
+     * Get comprehensive stock report untuk product
+     */
+    public function getProductStockReport($productId, $startDate = null, $endDate = null)
+    {
+        $product = Product::find($productId);
+        
+        if (!$product) {
+            return null;
+        }
+
+        $query = StockLog::forProduct($productId);
+        
+        if ($startDate && $endDate) {
+            $query->betweenDates($startDate, $endDate);
+        } elseif ($startDate) {
+            $query->forDate($startDate);
+        }
+
+        $movements = $query->with(['user', 'transaction'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return [
+            'product' => $product,
+            'current_stock' => $this->getCurrentStock($productId),
+            'stock_info' => $product->getStockInfo(),
+            'movements' => $movements,
+            'summary' => [
+                'total_in' => $movements->where('type', 'in')->sum('quantity_change'),
+                'total_out' => $movements->where('type', 'out')->sum('quantity_change'),
+                'total_sales' => $movements->where('type', StockLog::TYPE_SALE)->sum('quantity_change'),
+                'total_adjustments' => $movements->where('type', StockLog::TYPE_ADJUSTMENT)->sum('quantity_change'),
+                'total_returns' => $movements->where('type', StockLog::TYPE_CANCELLATION_RETURN)->sum('quantity_change'),
+            ]
+        ];
+    }
+
+    /**
+     * Log stock adjustment untuk admin - bisa positive atau negative
+     */
+    public function logStockAdjustment($productId, $userId, $quantityChange, $reason = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            $product = Product::findOrFail($productId);
+            
+            // Validate user permissions (admin only)
+            $user = \App\Models\User::find($userId);
+            if (!$user || $user->role !== 'admin') {
+                throw new \Exception('Hanya admin yang dapat melakukan penyesuaian stok');
+            }
+
+            // Get current stock untuk calculate after-change value
+            $currentStock = $this->getCurrentStock($productId);
+            $stockAfterChange = $currentStock + $quantityChange;
+
+            // Create log entry
+            $stockLog = StockLog::create([
+                'product_id' => $productId,
+                'user_id' => $userId,
+                'type' => StockLog::TYPE_ADJUSTMENT,
+                'quantity_change' => $quantityChange,
+                'stock_after_change' => $stockAfterChange,
+                'notes' => $reason ? "Admin adjustment: {$reason}" : "Admin stock adjustment",
+                'reference_transaction_id' => null,
+                'created_at' => now()
+            ]);
+
+            DB::commit();
+
+            \Log::info('Stock adjustment logged', [
+                'product_id' => $productId,
+                'product_name' => $product->name,
+                'user_id' => $userId,
+                'quantity_change' => $quantityChange,
+                'stock_before' => $currentStock,
+                'stock_after' => $stockAfterChange,
+                'reason' => $reason
+            ]);
+
+            return $stockLog;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Stock adjustment failed', [
+                'product_id' => $productId,
+                'user_id' => $userId,
+                'quantity_change' => $quantityChange,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Bulk stock adjustment untuk multiple products - admin only
+     */
+    public function bulkStockAdjustment(array $adjustments, $userId, $reason = null)
+    {
+        try {
+            DB::beginTransaction();
+
+            $user = \App\Models\User::find($userId);
+            if (!$user || $user->role !== 'admin') {
+                throw new \Exception('Hanya admin yang dapat melakukan penyesuaian stok bulk');
+            }
+
+            $results = [];
+            $errors = [];
+
+            foreach ($adjustments as $adjustment) {
+                if (!isset($adjustment['product_id']) || !isset($adjustment['quantity_change'])) {
+                    $errors[] = 'Missing product_id atau quantity_change dalam adjustment data';
+                    continue;
+                }
+
+                try {
+                    $stockLog = $this->logStockAdjustment(
+                        $adjustment['product_id'],
+                        $userId,
+                        $adjustment['quantity_change'],
+                        $reason ?: ($adjustment['reason'] ?? null)
+                    );
+                    
+                    $results[] = [
+                        'product_id' => $adjustment['product_id'],
+                        'success' => true,
+                        'stock_log_id' => $stockLog->id,
+                        'quantity_change' => $adjustment['quantity_change']
+                    ];
+                } catch (\Exception $e) {
+                    $errors[] = "Product ID {$adjustment['product_id']}: {$e->getMessage()}";
+                    $results[] = [
+                        'product_id' => $adjustment['product_id'],
+                        'success' => false,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+
+            if (!empty($errors) && empty(array_filter($results, fn($r) => $r['success']))) {
+                // All failed
+                throw new \Exception('Semua adjustment gagal: ' . implode(', ', $errors));
+            }
+
+            DB::commit();
+
+            \Log::info('Bulk stock adjustment completed', [
+                'user_id' => $userId,
+                'total_adjustments' => count($adjustments),
+                'successful' => count(array_filter($results, fn($r) => $r['success'])),
+                'failed' => count($errors),
+                'reason' => $reason
+            ]);
+
+            return [
+                'success' => true,
+                'results' => $results,
+                'errors' => $errors,
+                'summary' => [
+                    'total' => count($adjustments),
+                    'successful' => count(array_filter($results, fn($r) => $r['success'])),
+                    'failed' => count($errors)
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Get stock adjustment history untuk audit trail
+     */
+    public function getStockAdjustmentHistory($productId = null, $userId = null, $limit = 50)
+    {
+        $query = StockLog::with(['product', 'user'])
+            ->where('type', StockLog::TYPE_ADJUSTMENT)
+            ->orderBy('created_at', 'desc');
+
+        if ($productId) {
+            $query->where('product_id', $productId);
+        }
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        return $query->limit($limit)->get();
     }
 } 

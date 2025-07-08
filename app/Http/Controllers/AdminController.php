@@ -48,6 +48,14 @@ class AdminController extends Controller
     }
     
     /**
+     * Display users management page.
+     */
+    public function users()
+    {
+        return view('admin.users.index');
+    }
+    
+    /**
      * Display store configuration page.
      */
     public function config()

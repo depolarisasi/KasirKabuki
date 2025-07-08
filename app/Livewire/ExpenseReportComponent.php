@@ -5,16 +5,18 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Services\ReportService;
 use Carbon\Carbon;
-use RealRashid\SweetAlert\Facades\Alert;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Livewire\Attributes\Rule;
 
 class ExpenseReportComponent extends Component
 {
+
     public $startDate;
     public $endDate;
     public $reportData = [];
     public $isLoading = false;
     public $selectedPeriod = 'month'; // today, week, month, custom
+    public $investorMode = false; // New property for investor mode
     
     protected $reportService;
 
@@ -23,11 +25,13 @@ class ExpenseReportComponent extends Component
         $this->reportService = $reportService;
     }
 
-    public function mount()
+    public function mount($investorMode = false)
     {
+        $this->investorMode = $investorMode;
+        
         // Initialize with current month data
         $this->setDatePeriod('month');
-        $this->generateReport(false); // Don't show success alert on initial load
+        $this->generateReportSilently(); // Silent on initial load
     }
 
     public function render()
@@ -60,24 +64,30 @@ class ExpenseReportComponent extends Component
         }
 
         if ($period !== 'custom') {
-            $this->generateReport(false); // Don't show success alert on automatic period change
+            $this->generateReportSilently(); // Silent on automatic period change
         }
     }
 
-    public function generateReport($showSuccessAlert = true)
+    public function generateReport()
     {
         $this->isLoading = true;
 
         try {
             // Validate dates
             if (!$this->startDate || !$this->endDate) {
-                Alert::error('Error!', 'Tanggal mulai dan akhir harus diisi.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai dan akhir harus diisi.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
 
             if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
-                Alert::error('Error!', 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
@@ -85,13 +95,43 @@ class ExpenseReportComponent extends Component
             // Generate expense report
             $this->reportData = $this->reportService->getExpenseReport($this->startDate, $this->endDate);
             
-            // Only show success alert if explicitly requested
-            if ($showSuccessAlert) {
-                Alert::success('Berhasil!', 'Laporan pengeluaran berhasil dibuat.');
-            }
+            LivewireAlert::title('Berhasil!')
+                ->text('Laporan pengeluaran berhasil dibuat.')
+                ->success()
+                ->show();
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal membuat laporan: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal membuat laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
+        } finally {
+            $this->isLoading = false;
+        }
+    }
+
+    public function generateReportSilently()
+    {
+        $this->isLoading = true;
+
+        try {
+            // Validate dates
+            if (!$this->startDate || !$this->endDate) {
+                $this->isLoading = false;
+                return;
+            }
+
+            if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
+                $this->isLoading = false;
+                return;
+            }
+
+            // Generate expense report (no alert)
+            $this->reportData = $this->reportService->getExpenseReport($this->startDate, $this->endDate);
+            
+        } catch (\Exception $e) {
+            // Silent operation - log error but don't show alert
+            \Log::error('Silent expense report generation failed: ' . $e->getMessage());
         } finally {
             $this->isLoading = false;
         }
@@ -109,9 +149,21 @@ class ExpenseReportComponent extends Component
 
     public function exportToExcel()
     {
+        // Prevent export in investor mode
+        if ($this->investorMode) {
+            LivewireAlert::title('Akses Terbatas!')
+                ->text('Fitur export tidak tersedia untuk investor.')
+                ->warning()
+                ->show();
+            return;
+        }
+        
         try {
             if (empty($this->reportData)) {
-                Alert::error('Error!', 'Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.');
+                LivewireAlert::title('Error!')
+                    ->text('Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.')
+                    ->error()
+                    ->show();
                 return;
             }
 
@@ -126,7 +178,10 @@ class ExpenseReportComponent extends Component
             return $export->download($filename);
             
         } catch (\Exception $e) {
-            Alert::error('Error!', 'Gagal mengekspor laporan: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal mengekspor laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 
@@ -145,4 +200,4 @@ class ExpenseReportComponent extends Component
     {
         return Carbon::parse($date)->format('d/m/Y');
     }
-} 
+}

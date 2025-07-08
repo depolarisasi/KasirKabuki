@@ -19,8 +19,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Toaster Hub Component -->
-    <x-toaster-hub />
+     
 </body>
 </html> 

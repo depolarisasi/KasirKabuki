@@ -233,17 +233,17 @@
                                                 <tbody>
                                                     @foreach($day['reconciliation'] as $item)
                                                         <tr>
-                                                            <td class="font-semibold">{{ $item['product_name'] }}</td>
-                                                            <td>{{ number_format($item['initial_stock']) }}</td>
-                                                            <td>{{ number_format($item['sold']) }}</td>
-                                                            <td>{{ number_format($item['final_stock']) }}</td>
-                                                            <td>{{ number_format($item['calculated_stock']) }}</td>
-                                                            <td class="{{ $this->getStockStatusClass($item['difference']) }} font-semibold">
-                                                                {{ $item['difference'] >= 0 ? '+' : '' }}{{ number_format($item['difference']) }}
+                                                            <td class="font-semibold">{{ $item['product']->name ?? 'N/A' }}</td>
+                                                            <td>{{ number_format($item['initial_stock'] ?? 0) }}</td>
+                                                            <td>{{ number_format($item['sold'] ?? 0) }}</td>
+                                                            <td>{{ number_format($item['final_stock'] ?? 0) }}</td>
+                                                            <td>{{ number_format(($item['initial_stock'] ?? 0) - ($item['sold'] ?? 0)) }}</td>
+                                                            <td class="{{ $this->getStockStatusClass($item['difference'] ?? 0) }} font-semibold">
+                                                                {{ ($item['difference'] ?? 0) >= 0 ? '+' : '' }}{{ number_format($item['difference'] ?? 0) }}
                                                             </td>
                                                             <td>
-                                                                <div class="badge {{ $item['difference'] == 0 ? 'badge-success' : ($item['difference'] > 0 ? 'badge-info' : 'badge-error') }}">
-                                                                    {{ $this->getStockStatusText($item['difference']) }}
+                                                                <div class="badge {{ ($item['difference'] ?? 0) == 0 ? 'badge-success' : (($item['difference'] ?? 0) > 0 ? 'badge-info' : 'badge-error') }}">
+                                                                    {{ $this->getStockStatusText($item['difference'] ?? 0) }}
                                                                 </div>
                                                             </td>
                                                         </tr>

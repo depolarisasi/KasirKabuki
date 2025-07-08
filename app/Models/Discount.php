@@ -16,6 +16,7 @@ class Discount extends Model
         'value_type', // 'percentage' or 'fixed'
         'value',
         'product_id', // null for transaction discounts
+        'order_type', // 'dine_in', 'take_away', 'online', or null for all
         'is_active',
     ];
 
@@ -64,6 +65,17 @@ class Discount extends Model
     public function scopeTransactionDiscounts($query)
     {
         return $query->where('type', 'transaction');
+    }
+
+    /**
+     * Scope for order type filtering
+     */
+    public function scopeForOrderType($query, $orderType)
+    {
+        return $query->where(function ($subQuery) use ($orderType) {
+            $subQuery->where('order_type', $orderType)
+                     ->orWhereNull('order_type'); // Include discounts that apply to all order types
+        });
     }
 
     /**
@@ -120,5 +132,27 @@ class Discount extends Model
         }
         
         return min($this->value, $price); // Don't discount more than the price
+    }
+
+    /**
+     * Get order type label
+     */
+    public function getOrderTypeLabelAttribute()
+    {
+        $orderTypeLabels = [
+            'dine_in' => 'Makan di Tempat',
+            'take_away' => 'Bawa Pulang', 
+            'online' => 'Online',
+        ];
+        
+        return $this->order_type ? $orderTypeLabels[$this->order_type] : 'Semua Jenis';
+    }
+
+    /**
+     * Check if discount applies to given order type
+     */
+    public function appliesTo($orderType)
+    {
+        return is_null($this->order_type) || $this->order_type === $orderType;
     }
 }

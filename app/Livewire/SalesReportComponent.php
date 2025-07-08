@@ -5,31 +5,41 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Services\ReportService;
 use Carbon\Carbon;
-use Masmerise\Toaster\Toastable;
 use Livewire\Attributes\Rule;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class SalesReportComponent extends Component
 {
-    use Toastable;
 
     public $startDate;
     public $endDate;
     public $reportData = [];
     public $isLoading = false;
     public $selectedPeriod = 'today'; // today, yesterday, week, month, custom
+    public $investorMode = false; // New property for investor mode
+    public $autoRefresh = true; // Auto refresh for real-time updates
+    public $lastRefresh; // Track last refresh time
     
     // Chart data for JavaScript
     public $chartData = [];
     
     protected $reportService;
 
+    protected $listeners = [
+        'transaction-completed' => 'handleTransactionCompleted',
+        'refresh-sales-report' => 'refreshReport',
+    ];
+
     public function boot(ReportService $reportService)
     {
         $this->reportService = $reportService;
     }
 
-    public function mount()
+    public function mount($investorMode = false)
     {
+        $this->investorMode = $investorMode;
+        $this->lastRefresh = now()->format('H:i:s');
+        
         // Initialize with today's data
         $this->setDatePeriod('today');
         $this->generateReportSilently();
@@ -81,16 +91,25 @@ class SalesReportComponent extends Component
         try {
             // Validate dates
             if (!$this->startDate || !$this->endDate) {
-                $this->error('Tanggal mulai dan akhir harus diisi.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai dan akhir harus diisi.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
 
             if (Carbon::parse($this->startDate) > Carbon::parse($this->endDate)) {
-                $this->error('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
+                LivewireAlert::title('Error!')
+                    ->text('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.')
+                    ->error()
+                    ->show();
                 $this->isLoading = false;
                 return;
             }
+
+            // Clear any potential cache
+            $this->clearQueryCache();
 
             // Generate report data
             $this->reportData = $this->reportService->getSalesReport($this->startDate, $this->endDate);
@@ -98,10 +117,19 @@ class SalesReportComponent extends Component
             // Prepare chart data
             $this->prepareChartData();
             
-            $this->success('Laporan berhasil dibuat.');
+            // Update last refresh time
+            $this->lastRefresh = now()->format('H:i:s');
+            
+            LivewireAlert::title('Berhasil!')
+                ->text('Laporan berhasil dibuat.')
+                ->success()
+                ->show();
             
         } catch (\Exception $e) {
-            $this->error('Gagal membuat laporan: ' . $e->getMessage());
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text('Gagal membuat laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
         } finally {
             $this->isLoading = false;
         }
@@ -123,61 +151,14 @@ class SalesReportComponent extends Component
                 return;
             }
 
-            // Debug logging for sales report generation
-            \Log::info('SalesReportComponent: generateReportSilently called', [
-                'start_date' => $this->startDate,
-                'end_date' => $this->endDate,
-                'user_id' => auth()->id()
-            ]);
-
-            // Debug: Check transaction counts first
-            $totalTransactions = \App\Models\Transaction::count();
-            $completedTransactions = \App\Models\Transaction::completed()->count();
-            $todayTransactions = \App\Models\Transaction::completed()->today()->count();
-            
-            // Debug: Test different date formats
-            $startDateCarbon = \Carbon\Carbon::parse($this->startDate)->startOfDay();
-            $endDateCarbon = \Carbon\Carbon::parse($this->endDate)->endOfDay();
-            $dateRangeTransactions = \App\Models\Transaction::completed()
-                ->betweenDates($startDateCarbon, $endDateCarbon)->count();
-            
-            // Debug: Get sample transaction data for inspection
-            $sampleTransactions = \App\Models\Transaction::completed()
-                ->select(['id', 'transaction_code', 'created_at', 'final_total'])
-                ->latest()
-                ->limit(3)
-                ->get()
-                ->map(function($t) {
-                    return [
-                        'id' => $t->id,
-                        'code' => $t->transaction_code,
-                        'created_at' => $t->created_at->format('Y-m-d H:i:s'),
-                        'date_only' => $t->created_at->format('Y-m-d'),
-                        'final_total' => $t->final_total
-                    ];
-                });
-            
-            \Log::info('SalesReportComponent: Transaction counts', [
-                'total_transactions' => $totalTransactions,
-                'completed_transactions' => $completedTransactions,
-                'today_completed' => $todayTransactions,
-                'date_range_completed' => $dateRangeTransactions,
-                'query_start_date' => $this->startDate,
-                'query_end_date' => $this->endDate,
-                'parsed_start_date' => $startDateCarbon->format('Y-m-d H:i:s'),
-                'parsed_end_date' => $endDateCarbon->format('Y-m-d H:i:s'),
-                'current_timezone' => config('app.timezone'),
-                'sample_transactions' => $sampleTransactions->toArray()
-            ]);
+            // Clear any potential cache for real-time data
+            $this->clearQueryCache();
 
             // Generate report data without alert
             $this->reportData = $this->reportService->getSalesReport($this->startDate, $this->endDate);
             
-            \Log::info('SalesReportComponent: Report generated', [
-                'report_summary' => $this->reportData['summary'] ?? 'No summary',
-                'total_transactions_in_report' => $this->reportData['summary']['total_transactions'] ?? 0,
-                'total_revenue_in_report' => $this->reportData['summary']['total_net_revenue'] ?? 0
-            ]);
+            // Update last refresh time
+            $this->lastRefresh = now()->format('H:i:s');
             
             // Prepare chart data
             $this->prepareChartData();
@@ -190,6 +171,75 @@ class SalesReportComponent extends Component
             // Silent failure for initial load
         } finally {
             $this->isLoading = false;
+        }
+    }
+
+    /**
+     * Handle real-time transaction completion events
+     */
+    public function handleTransactionCompleted($transactionData = null)
+    {
+        // Only refresh if viewing today's data or if transaction falls within current date range
+        $shouldRefresh = false;
+        
+        if ($this->selectedPeriod === 'today') {
+            $shouldRefresh = true;
+        } elseif ($transactionData && isset($transactionData['created_at'])) {
+            $transactionDate = Carbon::parse($transactionData['created_at'])->format('Y-m-d');
+            $startDate = Carbon::parse($this->startDate)->format('Y-m-d');
+            $endDate = Carbon::parse($this->endDate)->format('Y-m-d');
+            
+            if ($transactionDate >= $startDate && $transactionDate <= $endDate) {
+                $shouldRefresh = true;
+            }
+        }
+        
+        if ($shouldRefresh && $this->autoRefresh) {
+            $this->generateReportSilently();
+            
+            // Show discrete notification for real-time update
+            $this->dispatch('report-updated', [
+                'message' => 'Laporan diperbarui dengan transaksi terbaru',
+                'time' => $this->lastRefresh
+            ]);
+        }
+    }
+
+    /**
+     * Clear potential query cache for real-time data
+     */
+    private function clearQueryCache()
+    {
+        // Clear model cache if any caching is implemented
+        if (method_exists(\App\Models\Transaction::class, 'flushQueryCache')) {
+            \App\Models\Transaction::flushQueryCache();
+        }
+        
+        // Clear Laravel's query cache
+        if (function_exists('cache')) {
+            cache()->forget('sales_report_' . $this->startDate . '_' . $this->endDate);
+            cache()->forget('transactions_today');
+            cache()->forget('sales_summary_' . Carbon::today()->format('Y-m-d'));
+        }
+    }
+
+    /**
+     * Toggle auto refresh
+     */
+    public function toggleAutoRefresh()
+    {
+        $this->autoRefresh = !$this->autoRefresh;
+        
+        if ($this->autoRefresh) {
+            LivewireAlert::title('Auto Refresh Aktif')
+                ->text('Laporan akan otomatis ter-update saat ada transaksi baru.')
+                ->success()
+                ->show();
+        } else {
+            LivewireAlert::title('Auto Refresh Nonaktif')
+                ->text('Laporan hanya akan ter-update manual.')
+                ->info()
+                ->show();
         }
     }
 
@@ -206,25 +256,30 @@ class SalesReportComponent extends Component
     protected function prepareChartData()
     {
         if (empty($this->reportData)) {
+            $this->chartData = [];
             return;
         }
 
-        // Daily sales trend chart data
-        $dailySales = $this->reportData['daily_sales'] ?? [];
+        // Safely get daily sales data as array
+        $dailySales = collect($this->reportData['daily_sales'] ?? [])->toArray();
+        $revenueByCategory = collect($this->reportData['revenue_by_category'] ?? [])->toArray();
+        $revenueByOrderType = collect($this->reportData['revenue_by_order_type'] ?? [])->toArray();
+        
+        // Daily sales trend chart data - using array operations
         $this->chartData = [
             'daily_sales' => [
-                'labels' => collect($dailySales)->pluck('formatted_date')->toArray(),
+                'labels' => array_column($dailySales, 'formatted_date'),
                 'datasets' => [
                     [
                         'label' => 'Pendapatan Bersih',
-                        'data' => collect($dailySales)->pluck('net_revenue')->toArray(),
+                        'data' => array_column($dailySales, 'net_revenue'),
                         'borderColor' => 'rgb(59, 130, 246)',
                         'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                         'tension' => 0.1
                     ],
                     [
                         'label' => 'Jumlah Transaksi',
-                        'data' => collect($dailySales)->pluck('transaction_count')->toArray(),
+                        'data' => array_column($dailySales, 'transaction_count'),
                         'borderColor' => 'rgb(16, 185, 129)',
                         'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                         'tension' => 0.1,
@@ -233,12 +288,12 @@ class SalesReportComponent extends Component
                 ]
             ],
             
-            // Revenue by category pie chart
+            // Revenue by category pie chart - using array operations
             'category_revenue' => [
-                'labels' => collect($this->reportData['revenue_by_category'] ?? [])->pluck('category_name')->toArray(),
+                'labels' => array_column($revenueByCategory, 'category_name'),
                 'datasets' => [
                     [
-                        'data' => collect($this->reportData['revenue_by_category'] ?? [])->pluck('total_revenue')->toArray(),
+                        'data' => array_column($revenueByCategory, 'total_revenue'),
                         'backgroundColor' => [
                             '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
                             '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
@@ -247,19 +302,19 @@ class SalesReportComponent extends Component
                 ]
             ],
             
-            // Order type distribution
+            // Order type distribution - using safe array handling
             'order_type_distribution' => [
-                'labels' => collect($this->reportData['revenue_by_order_type'] ?? [])->keys()->map(function($type) {
+                'labels' => array_map(function($type) {
                     return match($type) {
                         'dine_in' => 'Makan di Tempat',
                         'take_away' => 'Bawa Pulang',
                         'online' => 'Online',
                         default => $type
                     };
-                })->toArray(),
+                }, array_keys($revenueByOrderType)),
                 'datasets' => [
                     [
-                        'data' => collect($this->reportData['revenue_by_order_type'] ?? [])->pluck('net_revenue')->toArray(),
+                        'data' => array_values(array_column($revenueByOrderType, 'net_revenue')),
                         'backgroundColor' => ['#3B82F6', '#10B981', '#F59E0B']
                     ]
                 ]
@@ -272,9 +327,21 @@ class SalesReportComponent extends Component
 
     public function exportToExcel()
     {
+        // Prevent export in investor mode
+        if ($this->investorMode) {
+            LivewireAlert::title('Akses Terbatas!')
+                ->text('Fitur export tidak tersedia untuk investor.')
+                ->warning()
+                ->show();
+            return;
+        }
+        
         try {
             if (empty($this->reportData)) {
-                $this->error('Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.');
+                LivewireAlert::title('Error!')
+                    ->text('Tidak ada data untuk diekspor. Buat laporan terlebih dahulu.')
+                    ->error()
+                    ->show();
                 return;
             }
 
@@ -289,12 +356,15 @@ class SalesReportComponent extends Component
             return $export->download($filename);
             
         } catch (\Exception $e) {
-            \Log::error('SalesReportComponent: Export error', [
+            \Log::error('SalesReportComponent: Excel export failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            $this->error('Gagal mengekspor laporan: ' . $e->getMessage());
+            LivewireAlert::title('Error!')
+                ->text('Gagal mengekspor laporan: ' . $e->getMessage())
+                ->error()
+                ->show();
         }
     }
 

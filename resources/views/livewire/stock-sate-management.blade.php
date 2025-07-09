@@ -132,8 +132,7 @@
 
                             <!-- Stok Terjual (Read-only) -->
                             <td class="text-center">
-                                <span class="badge badge-info">{{ $entry['stok_terjual'] ?? 0 }}</span>
-                                <div class="text-xs text-gray-500 mt-1">Auto dari transaksi</div>
+                                <span class="badge badge-info">{{ $entry['stok_terjual'] ?? 0 }}</span> 
                             </td>
 
                             <!-- Stok Akhir -->

@@ -150,7 +150,7 @@
                     @forelse($transactions as $transaction)
                         <tr class="hover">
                             <td>
-                                <div class="font-mono font-semibold text-primary"> >
+                                <div class="font-mono font-semibold text-primary"> 
                                        {{ $transaction->transaction_code }} 
                                 </div>
                                 @if($transaction->partner)

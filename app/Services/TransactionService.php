@@ -346,11 +346,15 @@ class TransactionService
                     throw \App\Exceptions\BusinessException::productNotFound($item['name']);
                 }
                 
-                // Check stock availability with package support
-                $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
-                
-                if (!$stockCheck['available']) {
-                    throw \App\Exceptions\BusinessException::insufficientStock($product->name);
+                // Only check stock availability for sate products
+                // Non-sate products can be sold regardless of stock level
+                if ($product->jenis_sate && $product->quantity_effect) {
+                    // Check stock availability with package support
+                    $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
+                    
+                    if (!$stockCheck['available']) {
+                        throw \App\Exceptions\BusinessException::insufficientStock($product->name);
+                    }
                 }
                 
                 // Reserve stock by logging as sale temporarily
@@ -651,8 +655,19 @@ class TransactionService
                     throw new \Exception("Produk ID {$productId} tidak ditemukan.");
                 }
                 
+                // Only check stock availability for sate products
+                // Non-sate products can be reserved regardless of stock level
+                if ($product->jenis_sate && $product->quantity_effect) {
+                    // Check stock availability with package support
+                    $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
+                    
+                    if (!$stockCheck['available']) {
+                        throw new \Exception("Stok tidak mencukupi untuk {$product->name}");
+                    }
+                }
+                
                 try {
-                    $stockService->logSalesOut(
+                    $stockMovements = $stockService->logSale(
                         $productId,
                         auth()->id(),
                         $item['quantity'],
@@ -661,6 +676,7 @@ class TransactionService
                     );
                     
                     $stockReservations[$productId] = [
+                        'movements' => is_array($stockMovements) ? $stockMovements : [$stockMovements],
                         'quantity' => $item['quantity'],
                         'product_name' => $product->name,
                         'reserved_at' => Carbon::now()->toISOString()

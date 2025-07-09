@@ -1,7 +1,7 @@
 import {livewire_hot_reload} from 'virtual:livewire-hot-reload'
 import '../../vendor/masmerise/livewire-toaster/resources/js'
 import Swal from 'sweetalert2'
-import BluetoothPrinter from './bluetoothPrinter.js';
+import BluetoothPrinter from './bluetoothPrinter.js'; // Impor di sini
 
 // Buat satu instance printer dan pasang ke objek window
 // agar bisa diakses dari listener Livewire dengan mudah.
@@ -11,7 +11,6 @@ window.Swal = Swal
 livewire_hot_reload(); 
 console.log('Aplikasi siap. Printer helper tersedia di window.myPrinter');
 
-import BluetoothPrinter from './bluetoothPrinter.js'; // Impor di sini
 
 // Dengarkan event kustom yang akan kita kirim dari file Blade
 document.addEventListener('bluetooth-print-request', async (event) => {

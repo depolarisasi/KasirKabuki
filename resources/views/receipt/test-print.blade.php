@@ -357,18 +357,37 @@
         <button onclick="window.close()" class="secondary">✖️ Tutup</button>
     </div>
 
-    <script>
-        // Auto print when page loads (optional for testing)
-        // window.onload = function() {
-        //     setTimeout(function() {
-        //         window.print();
-        //     }, 500);
-        // };
-        
-        // Close window after printing (optional)
-        window.onafterprint = function() {
-            // window.close();
-        };
+    <script type="module">
+        // Import kelas printer yang sudah kita buat
+        import BluetoothPrinter from '{{ asset('resources/js/bluetoothPrinter.js') }}';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const printButton = document.getElementById('print-button');
+            const receiptData = printButton.dataset.receiptText;
+
+            printButton.addEventListener('click', async () => {
+                if (!receiptData) {
+                    alert('Tidak ada data untuk dicetak.');
+                    return;
+                }
+                
+                // Buat instance baru setiap kali diklik untuk memastikan koneksi baru
+                const printer = new BluetoothPrinter();
+                
+                console.log('Mencoba menghubungkan dan mencetak...');
+                printButton.textContent = 'Menghubungkan ke Printer...';
+                printButton.disabled = true;
+
+                // Hubungkan, lalu cetak
+                const isConnected = await printer.connect();
+                if (isConnected) {
+                    await printer.print(receiptData);
+                }
+
+                printButton.textContent = '🖨️ Cetak Struk Sekarang';
+                printButton.disabled = false;
+            });
+        });
     </script>
 </body>
 </html> 

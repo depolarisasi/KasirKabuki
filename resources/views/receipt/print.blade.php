@@ -307,197 +307,107 @@
         .bluetooth-guide li {
             margin-bottom: 5px;
         }
+
+        body { font-family: 'Courier New', monospace; background: #f5f5f5; padding: 20px; }
+        .receipt { max-width: 320px; margin: 0 auto; padding: 20px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .print-button-container { text-align: center; margin-top: 20px; }
+        .print-button-container button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 0 5px; }
+        .print-button-container button.secondary { background: #6c757d; }
+        .print-button-container button:disabled { background: #aaa; }
     </style>
 </head>
 <body>
+    
     @php
+        // 1. Kumpulkan semua data yang dibutuhkan oleh JavaScript
         $storeSettings = \App\Models\StoreSetting::current();
         $paymentAmount = request()->input('payment_amount', $transaction->final_total);
         $kembalian = $transaction->payment_method === 'qris' ? 0 : max(0, $paymentAmount - $transaction->final_total);
+
+        $dataForJs = [
+            'store' => [
+                'name' => $storeSettings->store_name,
+                'address' => $storeSettings->store_address,
+                'phone' => $storeSettings->store_phone,
+                'header' => $storeSettings->receipt_header,
+                'footer' => $storeSettings->receipt_footer,
+            ],
+            'transaction' => [
+                'code' => $transaction->transaction_code,
+                'notes' => $transaction->notes,
+                'date' => $transaction->created_at->locale('id')->isoFormat('D MMM Y, HH:mm'),
+                'cashier' => $transaction->user->name,
+            ],
+            'items' => $transaction->items->map(function ($item) {
+                return [
+                    'name' => $item->product_name,
+                    'quantity' => $item->quantity,
+                    'total' => $item->total,
+                ];
+            }),
+            'totals' => [
+                'subtotal' => $transaction->subtotal,
+                'discount' => $transaction->total_discount,
+                'final' => $transaction->final_total,
+            ],
+            'payment' => [
+                'method' => strtoupper($transaction->payment_method),
+                'amount' => $paymentAmount,
+                'change' => $kembalian,
+            ]
+        ];
     @endphp
-
-    <div class="receipt">
-        <!-- Mobile Bluetooth Printing Guide -->
-        <div class="bluetooth-guide no-print">
-            <h4>📱 Panduan Print Bluetooth (Android)</h4>
-            <ol>
-                <li>Pastikan printer Bluetooth sudah dipasangkan (paired)</li>
-                <li>Tekan tombol "Print Struk" di bawah</li>
-                <li>Pilih printer Bluetooth dari dialog print</li>
-                <li>Sesuaikan ukuran kertas ke "80mm" jika diperlukan</li>
-                <li>Tekan "Print" untuk mencetak</li>
-            </ol>
-            <p><strong>💡 Tips:</strong> Jika printer tidak muncul, pastikan Bluetooth aktif dan printer dalam mode pairing.</p>
+    
+{{-- Bagian ini hanya untuk tampilan di browser --}}
+<div class="receipt" id="receipt-preview">
+    <div style="text-align:center; font-weight:bold;">{{ $dataForJs['store']['name'] }}</div>
+    <div style="text-align:center;">{{ $dataForJs['store']['address'] }}</div>
+    <hr>
+    <div>Transaksi: {{ $dataForJs['transaction']['code'] }}</div>
+    <div>Tanggal: {{ $dataForJs['transaction']['date'] }}</div>
+    <hr>
+    @foreach($dataForJs['items'] as $item)
+        <div>{{ $item['name'] }}</div>
+        <div style="display:flex; justify-content:space-between;">
+            <span>{{ $item['quantity'] }} x {{ number_format($item['total'] / $item['quantity'], 0, ',', '.') }}</span>
+            <span>{{ number_format($item['total'], 0, ',', '.') }}</span>
         </div>
-
-        <!-- Logo (Center) -->
-        @if($storeSettings->show_receipt_logo && $storeSettings->receipt_logo_path)
-            <div class="logo">
-                <img src="{{ asset($storeSettings->receipt_logo_path) }}" alt="Logo">
-            </div>
-        @endif
-
-        <!-- Nama Toko (Center) -->
-        <div class="store-name">{{ $storeSettings->store_name }}</div>
-
-        <!-- Alamat (Center) -->
-        @if($storeSettings->store_address)
-            <div class="store-info">{{ $storeSettings->store_address }}</div>
-        @endif
-
-        <!-- Nomor Telp (Center) -->
-        @if($storeSettings->store_phone)
-            <div class="store-info">{{ $storeSettings->store_phone }}</div>
-        @endif
-
-        <!-- Header Text -->
-        @if($storeSettings->receipt_header)
-            <div class="header-text">{{ $storeSettings->receipt_header }}</div>
-        @endif 
-
-        <!-- PESANAN Section (Center) -->
-        <div class="order-section">
-            <div class="order-title">PESANAN</div>
-            
-            <!-- Nama Pesanan (if any) -->
-            @if($transaction->notes)
-                <div class="order-name">{{ $transaction->notes }}</div>
-            @endif
-
-            <!-- Hari, Tanggal, Jam -->
-            <div class="order-date">
-                {{ $transaction->created_at->locale('id')->isoFormat('dddd, D MMMM Y HH:mm') }}
-                <div class="order-name" style="margin-top: 5px;">Transaksi: {{ $transaction->transaction_code }}</div>
-                <div class="order-name">Kasir: {{ $transaction->user->name }}</div>
-            </div>
-        </div>
- 
-
-        <!-- Items Header -->
-        <div class="items-header">
-            <span class="item-name">Item</span>
-            <span class="item-qty">Qty</span>
-            <span class="item-total">Total</span>
-        </div>
-
-        <!-- Items List -->
-        @foreach($transaction->items as $item)
-            <div class="item-row">
-                <span class="item-name">{{ $item->product_name }}</span>
-                <span class="item-qty">{{ $item->quantity }}</span>
-                <span class="item-total">Rp. {{ number_format($item->total, 0, ',', '.') }}</span>
-            </div>
-        @endforeach
- 
-
-        <!-- Totals Section -->
-        <div class="totals-section">
-            <div class="total-row">
-                <span style="text-align: right; width: 100%; display: block;">Sub Total: Rp. {{ number_format($transaction->subtotal, 0, ',', '.') }}</span>
-            </div>
-            
-            @if($transaction->total_discount > 0)
-                <div class="total-row">
-                    <span style="text-align: right; width: 100%; display: block;">Discount: -Rp. {{ number_format($transaction->total_discount, 0, ',', '.') }}</span>
-                </div>
-            @endif
-            
-            <div class="total-row final">
-                <span style="text-align: right; width: 100%; display: block;">Total: Rp. {{ number_format($transaction->final_total, 0, ',', '.') }}</span>
-            </div>
-        </div>
-
-        <!-- Payment Information -->
-        <div class="payment-section">
-            <div class="total-row">
-                <span style="text-align: right; width: 100%; display: block;">Payment Type: {{ strtoupper($transaction->payment_method) }}</span>
-            </div>
-            
-            @if($transaction->payment_method === 'cash')
-                <div class="total-row">
-                    <span style="text-align: right; width: 100%; display: block;">Payment Amount: Rp. {{ number_format($paymentAmount, 0, ',', '.') }}</span>
-                </div>
-                <div class="total-row">
-                    <span style="text-align: right; width: 100%; display: block;">Kembalian: Rp. {{ number_format($kembalian, 0, ',', '.') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <!-- Separator -->
-        <div class="separator-line">---oOo---</div>
-
-        <!-- Footer -->
-        <div class="footer">
-            @if($storeSettings->receipt_footer)
-                <div>{{ $storeSettings->receipt_footer }}</div>
-            @endif
-            
-        </div>
+    @endforeach
+    <hr>
+    <div style="display:flex; justify-content:space-between;">
+        <span>Total:</span>
+        <span>Rp. {{ number_format($dataForJs['totals']['final'], 0, ',', '.') }}</span>
     </div>
+</div>
 
-    <!-- Enhanced Mobile Print Button -->
-    <div class="print-button no-print">
-        <button onclick="handlePrint()" id="printBtn">
-            🖨️ Print Struk
-        </button>
-        <button onclick="window.close()" class="secondary">
-            ✖️ Tutup
-        </button>
-    </div>
+{{-- Tombol Cetak Baru --}}
+<div class="print-button-container">
+    <button id="bluetooth-print-btn">
+        🖨️ Cetak via Bluetooth
+    </button>
+    <button onclick="window.print()" class="secondary">
+        ⎙ Cetak Biasa / Simpan PDF
+    </button>
+</div>
 
-    <script>
-        // Enhanced mobile print handling
-        function handlePrint() {
-            const printBtn = document.getElementById('printBtn');
-            printBtn.innerHTML = '🔄 Printing...';
-            printBtn.disabled = true;
-            
-            // Small delay to ensure UI updates
-            setTimeout(() => {
-                window.print();
-            }, 300);
-        }
-        
-        // Handle print dialog events
-        window.addEventListener('beforeprint', function() {
-            console.log('Print dialog opening...');
-        });
-        
-        window.addEventListener('afterprint', function() {
-            const printBtn = document.getElementById('printBtn');
-            printBtn.innerHTML = '🖨️ Print Struk';
-            printBtn.disabled = false;
-            console.log('Print dialog closed');
-        });
-        
-        // Mobile-specific optimizations
-        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            // Mobile device detected
-            console.log('Mobile device detected - optimizing for mobile print');
-            
-            // Add touch event handling
-            document.addEventListener('touchstart', function() {}, false);
-            
-            // Prevent zoom on double tap for better UX
-            let lastTouchEnd = 0;
-            document.addEventListener('touchend', function (event) {
-                const now = (new Date()).getTime();
-                if (now - lastTouchEnd <= 300) {
-                    event.preventDefault();
+{{-- 2. Lewatkan data ke JavaScript menggunakan @json --}}
+<script>
+    document.addEventListener('DOMContentLoaded', function() { 
+        const receiptData = @json($dataForJs);
+        const printButton = document.getElementById('bluetooth-print-btn');
+
+        // 2. Tambahkan event listener ke tombol
+        printButton.addEventListener('click', () => {
+            // 3. Kirim event kustom bernama 'bluetooth-print-request'
+            //    Isi event ini adalah data struk dan elemen tombol itu sendiri
+            document.dispatchEvent(new CustomEvent('bluetooth-print-request', {
+                detail: {
+                    data: receiptData,
+                    button: printButton
                 }
-                lastTouchEnd = now;
-            }, false);
-        }
-        
-        // Auto-focus on mobile for better accessibility
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.innerWidth <= 768) {
-                const printBtn = document.getElementById('printBtn');
-                if (printBtn) {
-                    printBtn.focus();
-                }
-            }
+            }));
         });
-    </script>
+    });
+</script>
 </body>
-</html> 
+</html>

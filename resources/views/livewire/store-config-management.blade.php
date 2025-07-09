@@ -257,7 +257,7 @@
             // Build URL with test data parameters
             const testData = event[0].testData;
             const params = new URLSearchParams(testData);
-            const testUrl = '{{ route("admin.test-receipt") }}?' + params.toString();
+            const testUrl = '{{ route("test-receipt") }}?' + params.toString();
             
             // Open test receipt in new window optimized for printing
             const testWindow = window.open(

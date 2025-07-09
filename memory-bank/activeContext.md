@@ -7,7 +7,61 @@
 
 ---
 
-## 🔧 LATEST BUG FIX - Stock Validation for Saved Orders
+## 🔧 LATEST BUG FIX - Partner Pricing Toggle Fix
+
+### Issue: Partner Pricing Toggle Cannot Be Activated ✅ FIXED
+**Problem:** Partner pricing toggle di form create & update produk selalu nonaktif, tidak bisa diaktifkan
+**Root Cause Analysis:**
+- ✅ Double-flip conflict antara `wire:model.live` dan `wire:click` di template
+- ✅ `wire:model.live="enablePartnerPricing"` sudah mengupdate property ketika user klik
+- ✅ `wire:click="togglePartnerPricing"` menjalankan method yang memflip nilai lagi
+- ✅ Akibatnya nilai di-flip dua kali dan kembali ke posisi semula
+
+**Solution Implementation:**
+- ✅ **Removed Conflicting Attribute**: Hapus `wire:click="togglePartnerPricing"` dari toggle input
+- ✅ **Added Property Updater**: Added `updatedEnablePartnerPricing()` method untuk auto-handle toggle changes
+- ✅ **Reset Logic**: Partner prices ter-reset otomatis ketika toggle dinonaktifkan
+- ✅ **Clean Implementation**: Hapus method `togglePartnerPricing()` yang bermasalah
+
+### Technical Implementation ✅
+**Before (PROBLEMATIC):**
+```html
+<input wire:model.live="enablePartnerPricing" 
+       wire:click="togglePartnerPricing"
+       type="checkbox" 
+       class="toggle toggle-primary ml-2" />
+```
+
+**After (FIXED):**
+```html
+<input wire:model.live="enablePartnerPricing" 
+       type="checkbox" 
+       class="toggle toggle-primary ml-2" />
+```
+
+**New Method Added:**
+```php
+public function updatedEnablePartnerPricing()
+{
+    if (!$this->enablePartnerPricing) {
+        // Reset all partner prices when disabled
+        foreach ($this->partnerPrices as $partnerId => $priceData) {
+            $this->partnerPrices[$partnerId]['price'] = '';
+            $this->partnerPrices[$partnerId]['is_active'] = false;
+        }
+    }
+}
+```
+
+### Fix Results ✅
+- ✅ **Toggle Working**: Partner pricing toggle sekarang dapat diaktifkan/dinonaktifkan normal
+- ✅ **Auto Reset**: Partner prices ter-reset otomatis ketika dinonaktifkan
+- ✅ **No Conflicts**: Tidak ada lagi double-flip conflicts
+- ✅ **Full Functionality**: Semua fitur partner pricing tetap berfungsi sempurna
+
+---
+
+## 🔧 PREVIOUS STOCK VALIDATION FIX - STILL WORKING
 
 ### Issue: Stock Validation Error for Non-Sate Products ✅ FIXED
 **Problem:** Error "stok tidak mencukupi" ketika menyimpan pesanan untuk produk non-sate

@@ -358,7 +358,6 @@
                             <label class="label cursor-pointer">
                                 <span class="label-text font-semibold">Partner Pricing</span>
                                 <input wire:model.live="enablePartnerPricing" 
-                                       wire:click="togglePartnerPricing"
                                        type="checkbox" 
                                        class="toggle toggle-primary ml-2" />
                             </label>

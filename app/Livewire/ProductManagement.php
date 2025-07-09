@@ -343,10 +343,11 @@ class ProductManagement extends Component
         }
     }
 
-    public function togglePartnerPricing()
+    /**
+     * Handle perubahan enable partner pricing toggle
+     */
+    public function updatedEnablePartnerPricing()
     {
-        $this->enablePartnerPricing = !$this->enablePartnerPricing;
-        
         if (!$this->enablePartnerPricing) {
             // Reset all partner prices when disabled
             foreach ($this->partnerPrices as $partnerId => $priceData) {

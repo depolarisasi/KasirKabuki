@@ -150,7 +150,9 @@
                         <tr class="hover">
                             <td>
                                 <div class="font-mono font-semibold text-primary">
-                                    {{ $transaction->transaction_code }}
+                                 <a href="{{ route('receipt.print', $transaction->id) }}">
+                                       {{ $transaction->transaction_code }}
+                                </a>
                                 </div>
                                 @if($transaction->partner)
                                     <div class="text-xs text-base-content/70">

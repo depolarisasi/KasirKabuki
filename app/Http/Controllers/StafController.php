@@ -58,11 +58,7 @@ class StafController extends Controller
      * Display receipt print page.
      */
     public function receiptPrint(Transaction $transaction)
-    {
-        // Ensure user can only view their own transactions or admin can view all
-        if (!auth()->user()->hasRole('admin') && $transaction->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized access to receipt.');
-        }
+    { 
         
         // Load transaction with relationships
         $transaction->load(['user', 'partner', 'items.product']);

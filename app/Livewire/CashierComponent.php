@@ -703,7 +703,7 @@ class CashierComponent extends Component
     {
         if ($this->completedTransaction) {
             // Open receipt in new window for printing with payment amount for kembalian calculation
-            $receiptUrl = route('staf.receipt.print', [
+            $receiptUrl = route('receipt.print', [
                 'transaction' => $this->completedTransaction->id,
                 'payment_amount' => $this->paymentAmount
             ]);

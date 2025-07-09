@@ -85,16 +85,94 @@ Route::middleware(['auth', 'role:admin|investor'])->prefix('admin')->name('admin
     Route::get('/reports/stock', [AdminController::class, 'stockReport'])->name('reports.stock');
 });
 
-// Receipt and Print Routes - Accessible by staff and admin
-Route::middleware(['auth', 'role:staf|admin'])->group(function () {
+// Receipt and Print Routes - Accessible by staff and admin 
     Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
     Route::get('/android-print/{transaction}', [StafController::class, 'androidPrintResponse'])->name('android.print.response');
-});
+ 
 
 // Admin Test Print Routes - Admin only
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
     Route::get('/android-test-print', [AdminController::class, 'androidTestPrint'])->name('android.test.print');
+});
+
+// Debug route for Android print testing
+Route::get('/debug-android-print', function() {
+    // Test format persis seperti instruksi
+    $a = array();
+    
+    $obj = new stdClass();
+    $obj->type = 0;
+    $obj->content = "DEBUG TEST STORE";
+    $obj->bold = 1;
+    $obj->align = 1;
+    $obj->format = 2;
+    array_push($a, $obj);
+    
+    $obj2 = new stdClass();
+    $obj2->type = 0;
+    $obj2->content = "Debug Address";
+    $obj2->bold = 0;
+    $obj2->align = 1;
+    $obj2->format = 0;
+    array_push($a, $obj2);
+    
+    // Output persis seperti instruksi dokumentasi
+    $jsonContent = json_encode($a, JSON_FORCE_OBJECT);
+    
+    // Log untuk debugging
+    \Log::info('Debug Android Print', [
+        'json_output' => $jsonContent,
+        'content_length' => strlen($jsonContent),
+        'array_count' => count($a)
+    ]);
+    
+    return response($jsonContent, 200)
+        ->header('Content-Type', 'application/json')
+        ->header('Content-Length', strlen($jsonContent));
+});
+
+// Endpoint test sederhana untuk Bluetooth Print
+Route::get('/simple-print-test', function() {
+    try {
+        $a = array();
+        
+        // Test object sederhana
+        $obj1 = new stdClass();
+        $obj1->type = 0;
+        $obj1->content = "TEST PRINT";
+        $obj1->bold = 1;
+        $obj1->align = 1;
+        $obj1->format = 2;
+        array_push($a, $obj1);
+        
+        $obj2 = new stdClass();
+        $obj2->type = 0;
+        $obj2->content = "Simple test line";
+        $obj2->bold = 0;
+        $obj2->align = 0;
+        $obj2->format = 0;
+        array_push($a, $obj2);
+        
+        // Exact format
+        $json = json_encode($a, JSON_FORCE_OBJECT);
+        
+        \Log::info('Simple Print Test', [
+            'output' => $json,
+            'size' => strlen($json)
+        ]);
+        
+        return response($json, 200)
+            ->header('Content-Type', 'application/json; charset=utf-8')
+            ->header('Content-Length', strlen($json))
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            
+    } catch (\Exception $e) {
+        \Log::error('Simple Print Test Error', ['error' => $e->getMessage()]);
+        return response('{"error":"Failed to generate test print"}', 500)
+            ->header('Content-Type', 'application/json');
+    }
 });
 
 // Staff Routes - Protected by auth and staf or admin role (investor removed from general access)

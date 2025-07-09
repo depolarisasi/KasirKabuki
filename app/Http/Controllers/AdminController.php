@@ -145,8 +145,8 @@ class AdminController extends Controller
         $discount = 2500;
         $kembalian = max(0, $paymentAmount - $finalTotal);
         
-        // Build JSON array for Bluetooth Print app
-        $printData = [];
+        // Build JSON array for Bluetooth Print app (following the exact format from instructions)
+        $a = array();
         
         // Store Logo (if enabled and exists) - Type 1 (image)
         if ($showReceiptLogo && $storeSettings->receipt_logo_path) {
@@ -154,7 +154,7 @@ class AdminController extends Controller
             $objLogo->type = 1; // image
             $objLogo->path = url($storeSettings->receipt_logo_path); // Full URL to image
             $objLogo->align = 1; // center
-            $printData[] = $objLogo;
+            array_push($a, $objLogo);
         }
         
         // Header - Store Name (Center, Bold, Large)
@@ -164,7 +164,7 @@ class AdminController extends Controller
         $obj1->bold = 1;
         $obj1->align = 1; // center
         $obj1->format = 2; // double Height + Width
-        $printData[] = $obj1;
+        array_push($a, $obj1);
         
         // Store Address (Center)
         if ($storeAddress) {
@@ -174,7 +174,7 @@ class AdminController extends Controller
             $obj2->bold = 0;
             $obj2->align = 1; // center
             $obj2->format = 0; // normal
-            $printData[] = $obj2;
+            array_push($a, $obj2);
         }
         
         // Store Phone (Center)
@@ -185,7 +185,7 @@ class AdminController extends Controller
             $obj3->bold = 0;
             $obj3->align = 1; // center
             $obj3->format = 0; // normal
-            $printData[] = $obj3;
+            array_push($a, $obj3);
         }
         
         // Receipt Header (if set)
@@ -196,7 +196,7 @@ class AdminController extends Controller
             $objHeader->bold = 0;
             $objHeader->align = 1; // center
             $objHeader->format = 0; // normal
-            $printData[] = $objHeader;
+            array_push($a, $objHeader);
         }
         
         // Separator line
@@ -206,7 +206,7 @@ class AdminController extends Controller
         $objSep1->bold = 0;
         $objSep1->align = 1; // center
         $objSep1->format = 0; // normal
-        $printData[] = $objSep1;
+        array_push($a, $objSep1);
         
         // Transaction Info
         $objTrans = new \stdClass();
@@ -215,7 +215,7 @@ class AdminController extends Controller
         $objTrans->bold = 0;
         $objTrans->align = 0; // left
         $objTrans->format = 0; // normal
-        $printData[] = $objTrans;
+        array_push($a, $objTrans);
         
         $objDate = new \stdClass();
         $objDate->type = 0; // text
@@ -223,7 +223,7 @@ class AdminController extends Controller
         $objDate->bold = 0;
         $objDate->align = 0; // left
         $objDate->format = 0; // normal
-        $printData[] = $objDate;
+        array_push($a, $objDate);
         
         $objCashier = new \stdClass();
         $objCashier->type = 0; // text
@@ -231,7 +231,7 @@ class AdminController extends Controller
         $objCashier->bold = 0;
         $objCashier->align = 0; // left
         $objCashier->format = 0; // normal
-        $printData[] = $objCashier;
+        array_push($a, $objCashier);
         
         // Separator line
         $objSep2 = new \stdClass();
@@ -240,7 +240,7 @@ class AdminController extends Controller
         $objSep2->bold = 0;
         $objSep2->align = 1; // center
         $objSep2->format = 0; // normal
-        $printData[] = $objSep2;
+        array_push($a, $objSep2);
         
         // Test Items
         $testItems = [
@@ -256,7 +256,7 @@ class AdminController extends Controller
             $objItem->bold = 0;
             $objItem->align = 0; // left
             $objItem->format = 0; // normal
-            $printData[] = $objItem;
+            array_push($a, $objItem);
             
             // Quantity and price in one line
             $itemTotal = $item['qty'] * $item['price'];
@@ -272,7 +272,7 @@ class AdminController extends Controller
             $objQtyPrice->bold = 0;
             $objQtyPrice->align = 0; // left
             $objQtyPrice->format = 0; // normal
-            $printData[] = $objQtyPrice;
+            array_push($a, $objQtyPrice);
         }
         
         // Separator line
@@ -282,7 +282,7 @@ class AdminController extends Controller
         $objSep3->bold = 0;
         $objSep3->align = 1; // center
         $objSep3->format = 0; // normal
-        $printData[] = $objSep3;
+        array_push($a, $objSep3);
         
         // Subtotal
         if ($subtotal != $finalTotal) {
@@ -293,7 +293,7 @@ class AdminController extends Controller
             $objSubtotal->bold = 0;
             $objSubtotal->align = 0; // left
             $objSubtotal->format = 0; // normal
-            $printData[] = $objSubtotal;
+            array_push($a, $objSubtotal);
         }
         
         // Discount (if any)
@@ -305,7 +305,7 @@ class AdminController extends Controller
             $objDiscount->bold = 0;
             $objDiscount->align = 0; // left
             $objDiscount->format = 0; // normal
-            $printData[] = $objDiscount;
+            array_push($a, $objDiscount);
         }
         
         // Total (Bold)
@@ -316,7 +316,7 @@ class AdminController extends Controller
         $objTotal->bold = 1;
         $objTotal->align = 0; // left
         $objTotal->format = 0; // normal
-        $printData[] = $objTotal;
+        array_push($a, $objTotal);
         
         // Payment Method
         $paymentLine = 'Bayar (CASH):' . str_repeat(' ', max(1, 32 - 13 - strlen('Rp ' . number_format($paymentAmount, 0, ',', '.')))) . 'Rp ' . number_format($paymentAmount, 0, ',', '.');
@@ -326,7 +326,7 @@ class AdminController extends Controller
         $objPayment->bold = 0;
         $objPayment->align = 0; // left
         $objPayment->format = 0; // normal
-        $printData[] = $objPayment;
+        array_push($a, $objPayment);
         
         // Change
         if ($kembalian > 0) {
@@ -337,7 +337,7 @@ class AdminController extends Controller
             $objChange->bold = 0;
             $objChange->align = 0; // left
             $objChange->format = 0; // normal
-            $printData[] = $objChange;
+            array_push($a, $objChange);
         }
         
         // Test message
@@ -347,7 +347,7 @@ class AdminController extends Controller
         $objTest->bold = 0;
         $objTest->align = 0; // left
         $objTest->format = 0; // normal
-        $printData[] = $objTest;
+        array_push($a, $objTest);
         
         // Empty line
         $objEmpty1 = new \stdClass();
@@ -356,7 +356,7 @@ class AdminController extends Controller
         $objEmpty1->bold = 0;
         $objEmpty1->align = 0; // left
         $objEmpty1->format = 0; // normal
-        $printData[] = $objEmpty1;
+        array_push($a, $objEmpty1);
         
         // Receipt Footer (if set)
         if ($receiptFooter) {
@@ -366,7 +366,7 @@ class AdminController extends Controller
             $objFooter->bold = 0;
             $objFooter->align = 1; // center
             $objFooter->format = 0; // normal
-            $printData[] = $objFooter;
+            array_push($a, $objFooter);
         }
         
         // Thank you message
@@ -376,7 +376,7 @@ class AdminController extends Controller
         $objThank->bold = 1;
         $objThank->align = 1; // center
         $objThank->format = 0; // normal
-        $printData[] = $objThank;
+        array_push($a, $objThank);
         
         // End separator
         $objEnd = new \stdClass();
@@ -385,10 +385,21 @@ class AdminController extends Controller
         $objEnd->bold = 0;
         $objEnd->align = 1; // center
         $objEnd->format = 0; // normal
-        $printData[] = $objEnd;
+        array_push($a, $objEnd);
         
-        // Return JSON response for Bluetooth Print app
-        return response()->json($printData, 200, [], JSON_FORCE_OBJECT);
+        // Log the JSON output for debugging
+        \Log::info('Android Test Print JSON Response', [
+            'json_length' => count($a),
+            'sample_structure' => array_slice($a, 0, 3) // Log first 3 items for verification
+        ]);
+        
+        // Return JSON response exactly as specified in the instructions
+        // Following the exact format: echo json_encode($a,JSON_FORCE_OBJECT);
+        $jsonContent = json_encode($a, JSON_FORCE_OBJECT);
+        
+        return response($jsonContent, 200)
+            ->header('Content-Type', 'application/json')
+            ->header('Content-Length', strlen($jsonContent));
     }
     
     /**

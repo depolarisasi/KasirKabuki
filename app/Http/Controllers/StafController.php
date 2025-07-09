@@ -81,8 +81,8 @@ class StafController extends Controller
         $paymentAmount = request()->input('payment_amount', $transaction->final_total);
         $kembalian = $transaction->payment_method === 'qris' ? 0 : max(0, $paymentAmount - $transaction->final_total);
         
-        // Build JSON array for Bluetooth Print app
-        $printData = [];
+        // Build array for Bluetooth Print app (following the exact format from instructions)
+        $a = array();
         
         // Store Logo (if enabled and exists) - Type 1 (image)
         if ($storeSettings->show_receipt_logo && $storeSettings->receipt_logo_path) {
@@ -90,7 +90,7 @@ class StafController extends Controller
             $objLogo->type = 1; // image
             $objLogo->path = url($storeSettings->receipt_logo_path); // Full URL to image
             $objLogo->align = 1; // center
-            $printData[] = $objLogo;
+            array_push($a, $objLogo);
         }
         
         // Header - Store Name (Center, Bold, Large)
@@ -100,7 +100,7 @@ class StafController extends Controller
         $obj1->bold = 1;
         $obj1->align = 1; // center
         $obj1->format = 2; // double Height + Width
-        $printData[] = $obj1;
+        array_push($a, $obj1);
         
         // Store Address (Center)
         if ($storeSettings->store_address) {
@@ -110,7 +110,7 @@ class StafController extends Controller
             $obj2->bold = 0;
             $obj2->align = 1; // center
             $obj2->format = 0; // normal
-            $printData[] = $obj2;
+            array_push($a, $obj2);
         }
         
         // Store Phone (Center)
@@ -121,7 +121,7 @@ class StafController extends Controller
             $obj3->bold = 0;
             $obj3->align = 1; // center
             $obj3->format = 0; // normal
-            $printData[] = $obj3;
+            array_push($a, $obj3);
         }
         
         // Receipt Header (if set)
@@ -132,7 +132,7 @@ class StafController extends Controller
             $objHeader->bold = 0;
             $objHeader->align = 1; // center
             $objHeader->format = 0; // normal
-            $printData[] = $objHeader;
+            array_push($a, $objHeader);
         }
         
         // Separator line
@@ -142,7 +142,7 @@ class StafController extends Controller
         $objSep1->bold = 0;
         $objSep1->align = 1; // center
         $objSep1->format = 0; // normal
-        $printData[] = $objSep1;
+        array_push($a, $objSep1);
         
         // Transaction Info
         $objTrans = new \stdClass();
@@ -151,7 +151,7 @@ class StafController extends Controller
         $objTrans->bold = 0;
         $objTrans->align = 0; // left
         $objTrans->format = 0; // normal
-        $printData[] = $objTrans;
+        array_push($a, $objTrans);
         
         $objDate = new \stdClass();
         $objDate->type = 0; // text
@@ -159,7 +159,7 @@ class StafController extends Controller
         $objDate->bold = 0;
         $objDate->align = 0; // left
         $objDate->format = 0; // normal
-        $printData[] = $objDate;
+        array_push($a, $objDate);
         
         $objCashier = new \stdClass();
         $objCashier->type = 0; // text
@@ -167,7 +167,7 @@ class StafController extends Controller
         $objCashier->bold = 0;
         $objCashier->align = 0; // left
         $objCashier->format = 0; // normal
-        $printData[] = $objCashier;
+        array_push($a, $objCashier);
         
         // Separator line
         $objSep2 = new \stdClass();
@@ -176,7 +176,7 @@ class StafController extends Controller
         $objSep2->bold = 0;
         $objSep2->align = 1; // center
         $objSep2->format = 0; // normal
-        $printData[] = $objSep2;
+        array_push($a, $objSep2);
         
         // Items
         foreach ($transaction->items as $item) {
@@ -187,7 +187,7 @@ class StafController extends Controller
             $objItem->bold = 0;
             $objItem->align = 0; // left
             $objItem->format = 0; // normal
-            $printData[] = $objItem;
+            array_push($a, $objItem);
             
             // Quantity and price in one line
             $pricePerItem = $item->total / $item->quantity;
@@ -203,7 +203,7 @@ class StafController extends Controller
             $objQtyPrice->bold = 0;
             $objQtyPrice->align = 0; // left
             $objQtyPrice->format = 0; // normal
-            $printData[] = $objQtyPrice;
+            array_push($a, $objQtyPrice);
         }
         
         // Separator line
@@ -213,7 +213,7 @@ class StafController extends Controller
         $objSep3->bold = 0;
         $objSep3->align = 1; // center
         $objSep3->format = 0; // normal
-        $printData[] = $objSep3;
+        array_push($a, $objSep3);
         
         // Subtotal
         if ($transaction->subtotal != $transaction->final_total) {
@@ -224,7 +224,7 @@ class StafController extends Controller
             $objSubtotal->bold = 0;
             $objSubtotal->align = 0; // left
             $objSubtotal->format = 0; // normal
-            $printData[] = $objSubtotal;
+            array_push($a, $objSubtotal);
         }
         
         // Discount (if any)
@@ -236,7 +236,7 @@ class StafController extends Controller
             $objDiscount->bold = 0;
             $objDiscount->align = 0; // left
             $objDiscount->format = 0; // normal
-            $printData[] = $objDiscount;
+            array_push($a, $objDiscount);
         }
         
         // Total (Bold)
@@ -247,7 +247,7 @@ class StafController extends Controller
         $objTotal->bold = 1;
         $objTotal->align = 0; // left
         $objTotal->format = 0; // normal
-        $printData[] = $objTotal;
+        array_push($a, $objTotal);
         
         // Payment Method
         $paymentLine = 'Bayar (' . strtoupper($transaction->payment_method) . '):' . str_repeat(' ', max(1, 32 - strlen('Bayar (' . strtoupper($transaction->payment_method) . '):') - strlen('Rp ' . number_format($paymentAmount, 0, ',', '.')))) . 'Rp ' . number_format($paymentAmount, 0, ',', '.');
@@ -257,7 +257,7 @@ class StafController extends Controller
         $objPayment->bold = 0;
         $objPayment->align = 0; // left
         $objPayment->format = 0; // normal
-        $printData[] = $objPayment;
+        array_push($a, $objPayment);
         
         // Change (only for cash)
         if ($transaction->payment_method === 'cash' && $kembalian > 0) {
@@ -268,7 +268,7 @@ class StafController extends Controller
             $objChange->bold = 0;
             $objChange->align = 0; // left
             $objChange->format = 0; // normal
-            $printData[] = $objChange;
+            array_push($a, $objChange);
         }
         
         // Notes (if any)
@@ -279,7 +279,7 @@ class StafController extends Controller
             $objNotes->bold = 0;
             $objNotes->align = 0; // left
             $objNotes->format = 0; // normal
-            $printData[] = $objNotes;
+            array_push($a, $objNotes);
         }
         
         // Empty line
@@ -289,7 +289,7 @@ class StafController extends Controller
         $objEmpty1->bold = 0;
         $objEmpty1->align = 0; // left
         $objEmpty1->format = 0; // normal
-        $printData[] = $objEmpty1;
+        array_push($a, $objEmpty1);
         
         // Receipt Footer (if set)
         if ($storeSettings->receipt_footer) {
@@ -299,7 +299,7 @@ class StafController extends Controller
             $objFooter->bold = 0;
             $objFooter->align = 1; // center
             $objFooter->format = 0; // normal
-            $printData[] = $objFooter;
+            array_push($a, $objFooter);
         }
         
         // Thank you message
@@ -309,7 +309,7 @@ class StafController extends Controller
         $objThank->bold = 1;
         $objThank->align = 1; // center
         $objThank->format = 0; // normal
-        $printData[] = $objThank;
+        array_push($a, $objThank);
         
         // End separator
         $objEnd = new \stdClass();
@@ -318,10 +318,21 @@ class StafController extends Controller
         $objEnd->bold = 0;
         $objEnd->align = 1; // center
         $objEnd->format = 0; // normal
-        $printData[] = $objEnd;
-         
+        array_push($a, $objEnd);
         
-        // Return JSON response for Bluetooth Print app
-        return response()->json($printData, 200, [], JSON_FORCE_OBJECT);
+        // Log the JSON output for debugging
+        \Log::info('Android Print JSON Response', [
+            'transaction_id' => $transaction->id,
+            'json_length' => count($a),
+            'sample_structure' => array_slice($a, 0, 3) // Log first 3 items for verification
+        ]);
+        
+        // Return JSON response exactly as specified in the instructions
+        // Following the exact format: echo json_encode($a,JSON_FORCE_OBJECT);
+        $jsonContent = json_encode($a, JSON_FORCE_OBJECT);
+        
+        return response($jsonContent, 200)
+            ->header('Content-Type', 'application/json')
+            ->header('Content-Length', strlen($jsonContent));
     }
 } 

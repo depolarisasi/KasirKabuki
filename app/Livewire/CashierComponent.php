@@ -707,7 +707,22 @@ class CashierComponent extends Component
                 'transaction' => $this->completedTransaction->id,
                 'payment_amount' => $this->paymentAmount
             ]);
+            
+            \Log::info('CashierComponent: printReceipt called', [
+                'transaction_id' => $this->completedTransaction->id,
+                'payment_amount' => $this->paymentAmount,
+                'receipt_url' => $receiptUrl
+            ]);
+            
+            // Dispatch event to open receipt window (Livewire 3.x format with explicit array)
             $this->dispatch('open-receipt-window', ['url' => $receiptUrl]);
+        } else {
+            \Log::error('CashierComponent: printReceipt called but no completed transaction available');
+            
+            LivewireAlert::title('Error!')
+            ->text('Tidak ada transaksi yang dapat dicetak.')
+            ->error()
+            ->show();
         }
     }
 

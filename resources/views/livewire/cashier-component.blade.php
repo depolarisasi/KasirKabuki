@@ -930,19 +930,42 @@
 
     <!-- JavaScript Section -->
     <script>
-        // Handle receipt window opening
+        // Handle receipt window opening - Livewire 3.x compatible
         document.addEventListener('livewire:init', () => {
             Livewire.on('open-receipt-window', (event) => {
-                // Open receipt in new window optimized for printing
-                const receiptWindow = window.open(
-                    event.url,
-                    'receipt',
-                    'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no'
-                );
+                console.log('Opening receipt window with event:', event);
+                
+                // Extract URL from event data (Livewire 3.x sends array format)
+                const eventData = Array.isArray(event) ? event[0] : event;
+                const receiptUrl = eventData.url || eventData;
+                
+                console.log('Receipt URL:', receiptUrl);
+                
+                if (!receiptUrl) {
+                    console.error('No receipt URL provided');
+                    alert('Error: Tidak dapat membuka struk - URL tidak tersedia');
+                    return;
+                }
+                
+                try {
+                    // Open receipt in new window optimized for printing
+                    const receiptWindow = window.open(
+                        receiptUrl,
+                        'receipt',
+                        'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no'
+                    );
 
-                // Focus the new window
-                if (receiptWindow) {
-                    receiptWindow.focus();
+                    // Check if window was successfully opened
+                    if (receiptWindow) {
+                        receiptWindow.focus();
+                        console.log('Receipt window opened successfully');
+                    } else {
+                        console.error('Failed to open receipt window - popup may be blocked');
+                        alert('Error: Tidak dapat membuka jendela struk. Pastikan popup blocker tidak aktif.');
+                    }
+                } catch (error) {
+                    console.error('Error opening receipt window:', error);
+                    alert('Error: Terjadi kesalahan saat membuka struk - ' + error.message);
                 }
             });
 

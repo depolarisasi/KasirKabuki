@@ -440,25 +440,6 @@
     
      
 </div>
-
-{{-- 2. Lewatkan data ke JavaScript menggunakan @json --}}
-<script>
-    document.addEventListener('DOMContentLoaded', function() { 
-        const receiptData = @json($dataForJs);
-        const printButton = document.getElementById('bluetooth-print-btn');
-
-        // 2. Tambahkan event listener ke tombol
-        printButton.addEventListener('click', () => {
-            // 3. Kirim event kustom bernama 'bluetooth-print-request'
-            //    Isi event ini adalah data struk dan elemen tombol itu sendiri
-            document.dispatchEvent(new CustomEvent('bluetooth-print-request', {
-                detail: {
-                    data: receiptData,
-                    button: printButton
-                }
-            }));
-        });
-    });
-</script>
+ 
 </body>
 </html>

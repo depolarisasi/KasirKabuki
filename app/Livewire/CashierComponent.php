@@ -69,8 +69,8 @@ class CashierComponent extends Component
 
     public function render()
     {
-        // Get products filtered by category and search
-        $productsQuery = Product::with('category')
+        // Get products filtered by category and search with eager loading
+        $productsQuery = Product::with(['category', 'activeComponents.componentProduct', 'partnerPrices'])
             ->when($this->selectedCategory !== 'all', function ($query) {
                 $query->whereHas('category', function ($subQuery) {
                     $subQuery->where('id', $this->selectedCategory);
@@ -89,7 +89,7 @@ class CashierComponent extends Component
         // Get cart totals and items
         $cartData = $this->transactionService->getCartTotals();
         
-        // Get available discounts
+        // Get available discounts with eager loading
         $availableDiscounts = $this->transactionService->getAvailableDiscounts($this->orderType);
         
         // Get saved orders

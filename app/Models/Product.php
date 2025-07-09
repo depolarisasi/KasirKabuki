@@ -18,6 +18,8 @@ class Product extends Model
         'price',
         'category_id',
         'photo',
+        'jenis_sate',
+        'quantity_effect',
     ];
 
     protected $dates = ['deleted_at'];
@@ -393,6 +395,9 @@ class Product extends Model
      */
     public function getStockInfo()
     {
+        // Ensure relationships are loaded to prevent N+1 queries
+        $this->loadMissing(['activeComponents.componentProduct', 'packagesUsingThisComponent.packageProduct']);
+        
         $info = [
             'product_id' => $this->id,
             'product_name' => $this->name,
@@ -418,7 +423,6 @@ class Product extends Model
         if ($this->isComponentProduct()) {
             $info['used_in_packages'] = $this->packagesUsingThisComponent()
                 ->where('is_active', true)
-                ->with('packageProduct')
                 ->get()
                 ->map(function ($usage) {
                     return [

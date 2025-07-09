@@ -22,7 +22,7 @@ class ReportService
         $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::today()->startOfDay();
         $endDate = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::today()->endOfDay();
 
-        // Base query for completed transactions in date range
+        // Base query for completed transactions in date range with optimized eager loading
         $transactions = Transaction::completed()
             ->betweenDates($startDate, $endDate)
             ->with(['user', 'partner', 'items.product.category']);

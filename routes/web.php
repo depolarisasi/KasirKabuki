@@ -94,7 +94,10 @@ Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('s
     
     // Main Staff Interfaces
     Route::get('/cashier', [StafController::class, 'cashier'])->name('cashier');
-    Route::get('/stock', [StafController::class, 'stock'])->name('stock');
+    Route::get('/stock', function () {
+        return redirect()->route('staf.stock-sate');
+    })->name('stock');
+    Route::get('/stock-sate', [StafController::class, 'stockSate'])->name('stock-sate');
     Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
     
     // Transaction Management

@@ -53,7 +53,7 @@ class ExpenseManagement extends Component
     public function render()
     {
         $expenses = Expense::query()
-            ->with('user')
+            ->with('user') // Already optimized to prevent N+1 queries
             ->when($this->search, function ($query) {
                 $query->search($this->search);
             })

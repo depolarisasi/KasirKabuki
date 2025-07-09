@@ -80,7 +80,7 @@ class TransactionPageComponent extends Component
 
     public function getFilteredTransactions()
     {
-        $query = Transaction::with(['user', 'partner', 'items.product'])
+        $query = Transaction::with(['user', 'partner', 'items.product.category'])
             ->orderBy('created_at', 'desc');
 
         // Date filtering

@@ -7,6 +7,7 @@ use App\Models\ProductPartnerPrice;
 use App\Models\Discount;
 use App\Models\Partner;
 use App\Models\Category;
+use App\Services\StockSateService;
 use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
 
@@ -230,12 +231,12 @@ class TransactionService
     {
         // Check if order type is online - discounts not allowed
         if ($orderType === 'online') {
-            throw new \Exception('Diskon tidak dapat diterapkan pada pesanan online.');
+            throw \App\Exceptions\BusinessException::discountNotAllowed('Diskon tidak dapat diterapkan pada pesanan online');
         }
 
         $cart = $this->getCart();
         if (empty($cart)) {
-            throw new \Exception('Keranjang kosong, tidak dapat menerapkan diskon.');
+            throw \App\Exceptions\BusinessException::cartEmpty();
         }
 
         $cartTotals = $this->getCartTotals();
@@ -244,17 +245,17 @@ class TransactionService
         // Validate discount amount
         if ($type === 'percentage') {
             if ($value <= 0 || $value > 100) {
-                throw new \Exception('Persentase diskon harus antara 1-100%.');
+                throw \App\Exceptions\BusinessException::invalidDiscount('Persentase diskon harus antara 1-100%');
             }
         } else if ($type === 'nominal') {
             if ($value <= 0) {
-                throw new \Exception('Nominal diskon harus lebih dari 0.');
+                throw \App\Exceptions\BusinessException::invalidDiscount('Nominal diskon harus lebih dari 0');
             }
             if ($value >= $subtotal) {
-                throw new \Exception('Nominal diskon tidak boleh melebihi subtotal transaksi.');
+                throw \App\Exceptions\BusinessException::invalidDiscount('Nominal diskon tidak boleh melebihi subtotal transaksi');
             }
         } else {
-            throw new \Exception('Tipe diskon tidak valid.');
+            throw \App\Exceptions\BusinessException::invalidDiscount('Tipe diskon tidak valid');
         }
 
         $appliedDiscounts = Session::get('applied_discounts', []);
@@ -326,13 +327,13 @@ class TransactionService
             $cartTotals = $this->getCartTotals();
             
             if (empty($cart)) {
-                throw new \Exception('Keranjang belanja kosong.');
+                throw \App\Exceptions\BusinessException::cartEmpty();
             }
             
             $savedOrders = Session::get('saved_orders', []);
             
             if (isset($savedOrders[$orderName])) {
-                throw new \Exception('Nama pesanan sudah digunakan.');
+                throw \App\Exceptions\BusinessException::orderAlreadyExists($orderName);
             }
             
             // Check stock availability untuk semua items dan reduce stock
@@ -342,14 +343,14 @@ class TransactionService
             foreach ($cart as $productId => $item) {
                 $product = \App\Models\Product::find($productId);
                 if (!$product) {
-                    throw new \Exception("Produk '{$item['name']}' tidak ditemukan.");
+                    throw \App\Exceptions\BusinessException::productNotFound($item['name']);
                 }
                 
                 // Check stock availability with package support
                 $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
                 
                 if (!$stockCheck['available']) {
-                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. {$stockCheck['message']}");
+                    throw \App\Exceptions\BusinessException::insufficientStock($product->name);
                 }
                 
                 // Reserve stock by logging as sale temporarily
@@ -381,6 +382,32 @@ class TransactionService
             ];
             
             Session::put('saved_orders', $savedOrders);
+            
+            // Update Stock Sate data for saved order (reserve stock)
+            $stockSateService = app(StockSateService::class);
+            try {
+                $savedOrderItems = [];
+                foreach ($cart as $productId => $item) {
+                    $savedOrderItems[] = [
+                        'product_id' => $productId,
+                        'quantity' => $item['quantity']
+                    ];
+                }
+                
+                $stockSateService->updateStockFromSavedOrder($savedOrderItems);
+                
+                \Log::info('Stock Sate updated from saved order', [
+                    'order_name' => $orderName,
+                    'items_count' => count($savedOrderItems)
+                ]);
+                
+            } catch (\Exception $stockSateError) {
+                // Log stock sate error but don't fail save
+                \Log::warning('Stock Sate update failed during save order', [
+                    'order_name' => $orderName,
+                    'error' => $stockSateError->getMessage()
+                ]);
+            }
             
             // Clear current cart
             $this->clearCart();
@@ -426,14 +453,14 @@ class TransactionService
         $savedOrders = Session::get('saved_orders', []);
         
         if (!isset($savedOrders[$orderName])) {
-            throw new \Exception('Pesanan tersimpan tidak ditemukan.');
+            throw \App\Exceptions\BusinessException::orderNotFound($orderName);
         }
         
         $savedOrder = $savedOrders[$orderName];
         
         // Validate that saved order has required data
         if (!isset($savedOrder['cart']) || empty($savedOrder['cart'])) {
-            throw new \Exception('Data pesanan tersimpan tidak valid.');
+            throw \App\Exceptions\BusinessException::orderNotFound('Data pesanan tersimpan tidak valid');
         }
         
         // Verify stock reservations are still valid (optional check)
@@ -485,7 +512,7 @@ class TransactionService
             $savedOrders = Session::get('saved_orders', []);
             
             if (!isset($savedOrders[$orderName])) {
-                throw new \Exception('Pesanan tersimpan tidak ditemukan.');
+                throw \App\Exceptions\BusinessException::orderNotFound($orderName);
             }
             
             $savedOrder = $savedOrders[$orderName];
@@ -525,6 +552,34 @@ class TransactionService
             // Remove from saved orders
             unset($savedOrders[$orderName]);
             Session::put('saved_orders', $savedOrders);
+            
+            // Update Stock Sate data for deleted saved order (return stock)
+            $stockSateService = app(StockSateService::class);
+            try {
+                if (isset($savedOrder['cart'])) {
+                    $cancelledOrderItems = [];
+                    foreach ($savedOrder['cart'] as $productId => $item) {
+                        $cancelledOrderItems[] = [
+                            'product_id' => $productId,
+                            'quantity' => $item['quantity']
+                        ];
+                    }
+                    
+                    $stockSateService->updateStockFromCancelledSavedOrder($cancelledOrderItems);
+                    
+                    \Log::info('Stock Sate updated from deleted saved order', [
+                        'order_name' => $orderName,
+                        'items_count' => count($cancelledOrderItems)
+                    ]);
+                }
+                
+            } catch (\Exception $stockSateError) {
+                // Log stock sate error but don't fail deletion
+                \Log::warning('Stock Sate update failed during saved order deletion', [
+                    'order_name' => $orderName,
+                    'error' => $stockSateError->getMessage()
+                ]);
+            }
             
             \DB::commit();
             
@@ -663,7 +718,8 @@ class TransactionService
     public function getProductsByCategory()
     {
         return Category::with(['products' => function ($query) {
-            $query->orderBy('name');
+            $query->with(['activeComponents.componentProduct', 'partnerPrices'])
+                  ->orderBy('name');
         }])
         ->orderBy('name')
         ->get()
@@ -680,7 +736,7 @@ class TransactionService
         $cart = $this->getCart();
         
         if (empty($cart)) {
-            throw new \Exception('Keranjang belanja kosong.');
+            throw \App\Exceptions\BusinessException::cartEmpty();
         }
         
         $errors = [];
@@ -689,7 +745,7 @@ class TransactionService
         foreach ($cart as $productId => $item) {
             $product = Product::find($productId);
             if (!$product) {
-                $errors[] = "Produk '{$item['name']}' tidak ditemukan.";
+                $errors[] = \App\Exceptions\BusinessException::productNotFound($item['name'])->getUserMessage();
                 continue;
             }
             
@@ -698,7 +754,7 @@ class TransactionService
         }
         
         if (!empty($errors)) {
-            throw new \Exception('Error dalam keranjang: ' . implode(', ', $errors));
+            throw \App\Exceptions\BusinessException::invalidDiscount('Error dalam keranjang: ' . implode(', ', $errors));
         }
         
         return true;
@@ -819,6 +875,33 @@ class TransactionService
 
             // Mark transaction as completed
             $transaction->markAsCompleted();
+
+            // Update Stock Sate data automatically
+            $stockSateService = app(StockSateService::class);
+            try {
+                $transactionItems = [];
+                foreach ($cart as $productId => $item) {
+                    $transactionItems[] = [
+                        'product_id' => $productId,
+                        'quantity' => $item['quantity']
+                    ];
+                }
+                
+                $stockSateService->updateStockFromTransaction($transactionItems);
+                
+                \Log::info('Stock Sate updated from transaction completion', [
+                    'transaction_id' => $transaction->id,
+                    'transaction_code' => $transaction->transaction_code,
+                    'items_count' => count($transactionItems)
+                ]);
+                
+            } catch (\Exception $stockSateError) {
+                // Log stock sate error but don't fail transaction
+                \Log::warning('Stock Sate update failed during transaction', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $stockSateError->getMessage()
+                ]);
+            }
 
             // Clear cart and session data
             $this->clearCart();

@@ -7,6 +7,11 @@
 
         <title>{{ config('app.name', 'KasirBraga') }}</title>
 
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon.png') }}">
+        <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
+
         <!-- Fonts -->
         <!-- Using system fonts for better performance -->
 
@@ -20,7 +25,7 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-base-100">
             <div>
                 <a href="/" wire:navigate>
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                    <x-application-logo class="h-20 w-auto" />
                 </a>
             </div>
 

@@ -8,7 +8,7 @@
     <header class="sticky top-0 z-40 w-full">
         <div class="navbar bg-base-100 shadow-sm px-4 border-b border-base-200">
             <div class="navbar-start">
-                <h1 class="text-xl font-bold text-primary">KasirBraga</h1>
+                <img src="{{ asset('assets/logo-150x75.png') }}" alt="KasirBraga" class="h-8 w-auto">
             </div>
             <div class="navbar-end">
                 <div class="dropdown dropdown-end">
@@ -117,7 +117,7 @@
     <header class="sticky top-0 z-40 w-full">
         <div class="navbar bg-base-100 shadow-sm border-b border-base-200">
             <div class="navbar-start">
-                <h1 class="text-xl font-bold text-primary">KasirBraga</h1>
+                <img src="{{ asset('assets/logo-150x75.png') }}" alt="KasirBraga" class="h-10 w-auto">
             </div>
             
             <div class="navbar-center">

@@ -61,65 +61,7 @@
             </div>
         </div>
     </div>
-
-    <!-- User Information Card -->
-    <div class="card bg-base-300 shadow-lg">
-        <div class="card-body">
-            <h2 class="card-title text-lg mb-4">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-                Informasi Pengguna
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Nama</span>
-                    </label>
-                    <input type="text" value="{{ auth()->user()->name ?? 'N/A' }}" class="input input-bordered" readonly>
-                </div>
-                
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Email</span>
-                    </label>
-                    <input type="email" value="{{ auth()->user()->email ?? 'N/A' }}" class="input input-bordered" readonly>
-                </div>
-                
-                @if(isset(auth()->user()->role))
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text font-semibold">Role Column</span>
-                        </label>
-                        <span class="badge badge-secondary">{{ auth()->user()->role }}</span>
-                    </div>
-                @endif
-                
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Spatie Roles</span>
-                    </label>
-                    <div class="flex gap-1 flex-wrap">
-                        @if(auth()->user()->roles && auth()->user()->roles->count() > 0)
-                            @foreach(auth()->user()->roles as $role)
-                                <span class="badge badge-accent">{{ $role->name }}</span>
-                            @endforeach
-                        @else
-                            <span class="text-warning">No roles assigned</span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+ 
 </div>
-
-@push('scripts')
-<script>
-function testAlert() {
-    alert('JavaScript Alert works with SmartMonkey Theme! 🎨');
-}
-</script>
-@endpush
+ 
 @endsection 

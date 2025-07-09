@@ -1,20 +1,14 @@
 const CACHE_NAME = 'kasirbraga-v1.0.0';
 const STATIC_CACHE = 'kasirbraga-static-v1.0.0';
 
-// Static assets to cache (only static files, no dynamic routes)
+// Static assets to cache (only existing files)
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',  
-  '/icons/icon-72x72.png',
-  '/icons/icon-96x96.png',
-  '/icons/icon-128x128.png',
-  '/icons/icon-144x144.png',
-  '/icons/icon-152x152.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-384x384.png',
-  '/icons/icon-512x512.png',
-  '/icons/shortcut-cashier.png',
-  '/icons/shortcut-reports.png', 
+  '/assets/icon-192x192.png',
+  '/assets/icon-512x512.png',
+  '/assets/logo-150x75.png',
+  '/favicon.png',
 ];
 
 // Routes that should never be cached (dynamic routes)

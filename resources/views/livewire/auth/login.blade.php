@@ -2,7 +2,10 @@
 <div>
     <!-- Header -->
     <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-primary">Masuk ke KasirBraga</h2>
+        <div class="flex justify-center mb-4">
+            <img src="{{ asset('assets/logo-150x75.png') }}" alt="KasirBraga" class="h-12 w-auto">
+        </div>
+        <h2 class="text-2xl font-bold text-primary">Selamat Datang</h2>
         <p class="text-base-content/70 mt-2">Silakan masuk dengan akun Anda</p>
     </div>
 
@@ -108,21 +111,5 @@
             Login cepat menggunakan 6 digit PIN
         </p>
     </div>
-
-    <!-- Demo Accounts Info -->
-    <div class="divider">Demo Accounts</div>
-    
-    <div class="space-y-2 text-sm">
-        <div class="bg-base-200 p-3 rounded-lg">
-            <p class="font-semibold text-primary">👤 Admin:</p>
-            <p>Email: admin@satebraga.com</p>
-            <p>Password: admin123</p>
-        </div>
-        
-        <div class="bg-base-200 p-3 rounded-lg">
-            <p class="font-semibold text-success">👥 Staff Kasir:</p>
-            <p>Email: kasir@satebraga.com</p>
-            <p>Password: kasir123</p>
-        </div>
-    </div>
+ 
 </div> 

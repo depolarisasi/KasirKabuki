@@ -86,16 +86,16 @@ Route::middleware(['auth', 'role:admin|investor'])->prefix('admin')->name('admin
 });
 
 // Receipt and Print Routes - Accessible by staff and admin
-// Route::middleware(['auth', 'role:staf|admin'])->group(function () {
+Route::middleware(['auth', 'role:staf|admin'])->group(function () {
     Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
     Route::get('/android-print/{transaction}', [StafController::class, 'androidPrintResponse'])->name('android.print.response');
-// });
+});
 
 // Admin Test Print Routes - Admin only
-// Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
     Route::get('/android-test-print', [AdminController::class, 'androidTestPrint'])->name('android.test.print');
-// });
+});
 
 // Staff Routes - Protected by auth and staf or admin role (investor removed from general access)
 Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->group(function () {
@@ -111,7 +111,9 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
     })->name('stock');
     
     // Transaction Management
-    Route::get('transactions', App\Livewire\TransactionPageComponent::class)->name('transactions');
+    Route::get('transactions', function () {
+        return view('staf.transactions.index');
+    })->name('transactions');
     Route::get('/transactions/{transaction}', [StafController::class, 'transactionDetail'])->name('transactions.show');
      
 });

@@ -1,11 +1,12 @@
 {{-- Transaction Page Component --}}
-<div class="container mx-auto px-8 py-4 bg-base-200">
+<div class="bg-base-200 px-4 py-4">
     <!-- Page Header -->
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-white">Transaksi</h1>
+        <div class="bg-base-300 bg-opacity-10 rounded-lg p-4">
+            <h1 class="text-lg font-bold text-white">Transaksi</h1>
             <p class="text-white">Kelola dan monitor semua transaksi sistem</p>
         </div>
+      
         
         <!-- Summary Cards (Mobile: Stack, Desktop: Row) -->
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -149,10 +150,8 @@
                     @forelse($transactions as $transaction)
                         <tr class="hover">
                             <td>
-                                <div class="font-mono font-semibold text-primary">
-                                 <a href="{{ route('receipt.print', $transaction->id) }}">
-                                       {{ $transaction->transaction_code }}
-                                </a>
+                                <div class="font-mono font-semibold text-primary"> >
+                                       {{ $transaction->transaction_code }} 
                                 </div>
                                 @if($transaction->partner)
                                     <div class="text-xs text-base-content/70">
@@ -164,19 +163,12 @@
                                 <div class="text-sm">{{ $transaction->short_date }}</div>
                             </td>
                             <td>
-                                <div class="flex items-center gap-2">
-                                    <div class="avatar">
-                                        <div class="w-8 rounded-full bg-primary text-primary-content flex items-center justify-center">
-                                            <span class="text-xs font-semibold">{{ substr($transaction->user->name, 0, 1) }}</span>
-                                        </div>
-                                    </div>
+                                <div class="flex items-center gap-2"> 
                                     <span class="text-sm">{{ $transaction->user->name }}</span>
                                 </div>
                             </td>
-                            <td>
-                                <span class="badge badge-outline badge-sm">
-                                    {{ $this->getOrderTypeLabel($transaction->order_type) }}
-                                </span>
+                            <td> 
+                                    {{ $this->getOrderTypeLabel($transaction->order_type) }} 
                             </td>
                             <td>
                                 <span class="text-sm">{{ $this->getPaymentMethodLabel($transaction->payment_method) }}</span>
@@ -194,13 +186,21 @@
                             </td>
                             <td>
                                 <button wire:click="viewTransactionDetail({{ $transaction->id }})" 
-                                        class="btn btn-ghost btn-xs">
+                                        class="btn btn-info btn-xs ">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                     Detail
                                 </button>
+                                <a  href="{{ route('receipt.print', $transaction->id) }}"
+                                    class="btn btn-warning btn-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Print
+                            </a>
                             </td>
                         </tr>
                     @empty

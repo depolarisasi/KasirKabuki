@@ -48,7 +48,7 @@
             @include('partials.navigation')
 
             <!-- Page Content -->
-            <main class="container mx-auto px-4 py-6">
+            <main class="container mx-auto  ">
                 @yield('content')
             </main>
         </div>

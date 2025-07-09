@@ -75,18 +75,24 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
-    
-    // Test Receipt Route
-    Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
-    
-    // Reports
+     
+});
+
+// Admin Reports - Accessible by admin and investor
+Route::middleware(['auth', 'role:admin|investor'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/reports/sales', [AdminController::class, 'salesReport'])->name('reports.sales');
     Route::get('/reports/expenses', [AdminController::class, 'expensesReport'])->name('reports.expenses');
     Route::get('/reports/stock', [AdminController::class, 'stockReport'])->name('reports.stock');
 });
 
-// Staff Routes - Protected by auth and staf or admin role
-Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('staf.')->group(function () {
+
+    // Receipt Print Route
+    // Test Receipt Route
+    Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
+    Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
+
+// Staff Routes - Protected by auth and staf or admin role (investor removed from general access)
+Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->group(function () {
     // Dashboard redirect
     Route::get('/dashboard', function () {
         return redirect()->route('staf.cashier');
@@ -97,38 +103,29 @@ Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('s
     Route::get('/stock', function () {
         return redirect()->route('staf.stock-sate');
     })->name('stock');
-    Route::get('/stock-sate', [StafController::class, 'stockSate'])->name('stock-sate');
-    Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
     
     // Transaction Management
-    
     Route::get('transactions', App\Livewire\TransactionPageComponent::class)->name('transactions');
-
     Route::get('/transactions/{transaction}', [StafController::class, 'transactionDetail'])->name('transactions.show');
-    
-    // Receipt Print Route
-    Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
+     
 });
 
-// Investor Routes - Protected by auth and investor role
+// Specific Staff Routes - Accessible by staff, admin, and investor
+Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('staf.')->group(function () {
+    Route::get('/stock-sate', [StafController::class, 'stockSate'])->name('stock-sate');
+    Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
+});
+
+// Investor Routes - Redirect to first accessible page (admin reports sales)
 Route::middleware(['auth', 'role:investor'])->prefix('investor')->name('investor.')->group(function () {
-    Route::get('/dashboard', [App\Http\Controllers\InvestorController::class, 'dashboard'])->name('dashboard');
-    
-    // Reports - Read-only access
-    Route::get('/reports/sales', [App\Http\Controllers\InvestorController::class, 'salesReport'])->name('reports.sales');
-    Route::get('/reports/expenses', [App\Http\Controllers\InvestorController::class, 'expensesReport'])->name('reports.expenses');
+    Route::get('/dashboard', function () {
+        // Redirect investor to first accessible page instead of dedicated dashboard
+        return redirect()->route('admin.reports.sales');
+    })->name('dashboard');
 });
 
 // Breeze Profile Route (keep for user management)
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
-
-Route::get('/test-toaster', function () {
-    \Masmerise\Toaster\Toaster::success('Official Toaster is working!');
-    \Masmerise\Toaster\Toaster::info('Info message test');
-    \Masmerise\Toaster\Toaster::warning('Warning message test');
-    \Masmerise\Toaster\Toaster::error('Error message test');
-    
-    return view('welcome');
-})->name('test.toaster');
+ 

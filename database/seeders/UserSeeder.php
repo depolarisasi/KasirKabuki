@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
         // Create Roles first (check if exists)
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $stafRole = Role::firstOrCreate(['name' => 'staf']);
+        $investorRole = Role::firstOrCreate(['name' => 'investor']);
 
         // Create Admin User (check if exists)
         $adminUser = User::firstOrCreate(

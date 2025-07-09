@@ -98,7 +98,11 @@ class StockSateManagement extends Component
      */
     public function updateStokAwal($jenisSate)
     {
-        $this->updateStockField($jenisSate, 'stok_awal', $this->stokAwal[$jenisSate] ?? 0);
+        // Convert empty string to 0 and ensure integer type
+        $value = $this->stokAwal[$jenisSate] ?? 0;
+        $value = ($value === '' || $value === null) ? 0 : (int) $value;
+        
+        $this->updateStockField($jenisSate, 'stok_awal', $value);
     }
 
     /**
@@ -106,7 +110,11 @@ class StockSateManagement extends Component
      */
     public function updateStokAkhir($jenisSate)
     {
-        $this->updateStockField($jenisSate, 'stok_akhir', $this->stokAkhir[$jenisSate] ?? 0);
+        // Convert empty string to 0 and ensure integer type
+        $value = $this->stokAkhir[$jenisSate] ?? 0;
+        $value = ($value === '' || $value === null) ? 0 : (int) $value;
+        
+        $this->updateStockField($jenisSate, 'stok_akhir', $value);
     }
 
     /**
@@ -155,9 +163,18 @@ class StockSateManagement extends Component
         $entry = collect($this->stockEntries)->where('jenis_sate', $jenisSate)->first();
         
         if ($entry) {
-            $stokAwal = $this->stokAwal[$jenisSate] ?? $entry['stok_awal'] ?? 0;
-            $stokTerjual = $entry['stok_terjual'] ?? 0;
-            $stokAkhir = $this->stokAkhir[$jenisSate] ?? $entry['stok_akhir'] ?? 0;
+            // Ensure all values are integers and handle empty strings
+            $stokAwal = (int) ($this->stokAwal[$jenisSate] ?? $entry['stok_awal'] ?? 0);
+            $stokTerjual = (int) ($entry['stok_terjual'] ?? 0);
+            $stokAkhir = (int) ($this->stokAkhir[$jenisSate] ?? $entry['stok_akhir'] ?? 0);
+            
+            // Convert empty strings to 0
+            if ($stokAwal === 0 && ($this->stokAwal[$jenisSate] ?? $entry['stok_awal']) === '') {
+                $stokAwal = 0;
+            }
+            if ($stokAkhir === 0 && ($this->stokAkhir[$jenisSate] ?? $entry['stok_akhir']) === '') {
+                $stokAkhir = 0;
+            }
             
             $selisih = $stokAwal - $stokTerjual - $stokAkhir;
             
@@ -179,9 +196,18 @@ class StockSateManagement extends Component
         $entry = collect($this->stockEntries)->where('jenis_sate', $jenisSate)->first();
         
         if ($entry) {
-            $stokAwal = $this->stokAwal[$jenisSate] ?? $entry['stok_awal'] ?? 0;
-            $stokTerjual = $entry['stok_terjual'] ?? 0;
-            $stokAkhir = $this->stokAkhir[$jenisSate] ?? $entry['stok_akhir'] ?? 0;
+            // Ensure all values are integers and handle empty strings
+            $stokAwal = (int) ($this->stokAwal[$jenisSate] ?? $entry['stok_awal'] ?? 0);
+            $stokTerjual = (int) ($entry['stok_terjual'] ?? 0);
+            $stokAkhir = (int) ($this->stokAkhir[$jenisSate] ?? $entry['stok_akhir'] ?? 0);
+            
+            // Convert empty strings to 0
+            if ($stokAwal === 0 && ($this->stokAwal[$jenisSate] ?? $entry['stok_awal']) === '') {
+                $stokAwal = 0;
+            }
+            if ($stokAkhir === 0 && ($this->stokAkhir[$jenisSate] ?? $entry['stok_akhir']) === '') {
+                $stokAkhir = 0;
+            }
             
             return $stokAwal - $stokTerjual - $stokAkhir;
         }
@@ -212,9 +238,16 @@ class StockSateManagement extends Component
             $userId = Auth::id();
             
             foreach (StockSate::getJenisSateOptions() as $jenisSate) {
+                // Ensure proper type conversion for all numeric fields
+                $stokAwal = $this->stokAwal[$jenisSate] ?? 0;
+                $stokAwal = ($stokAwal === '' || $stokAwal === null) ? 0 : (int) $stokAwal;
+                
+                $stokAkhir = $this->stokAkhir[$jenisSate] ?? 0;
+                $stokAkhir = ($stokAkhir === '' || $stokAkhir === null) ? 0 : (int) $stokAkhir;
+                
                 $data = [
-                    'stok_awal' => $this->stokAwal[$jenisSate] ?? 0,
-                    'stok_akhir' => $this->stokAkhir[$jenisSate] ?? 0,
+                    'stok_awal' => $stokAwal,
+                    'stok_akhir' => $stokAkhir,
                     'keterangan' => $this->keterangan[$jenisSate] ?? ''
                 ];
                 

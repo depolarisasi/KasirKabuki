@@ -27,6 +27,10 @@ class TransactionPageComponent extends Component
     public $selectedTransaction = null;
     public $showDetailModal = false;
     
+    // Transaction edit properties
+    public $showEditModal = false;
+    public $editingTransaction = null;
+    
     // Available filter options
     public $orderTypes = [
         '' => 'Semua Jenis',
@@ -215,6 +219,56 @@ class TransactionPageComponent extends Component
     {
         $this->showDetailModal = false;
         $this->selectedTransaction = null;
+    }
+
+    public function editTransaction($transactionId)
+    {
+        try {
+            // Validate admin permission
+            if (!auth()->user() || !auth()->user()->hasRole('admin')) {
+                LivewireAlert::title('Akses Ditolak!')
+                    ->text('Hanya admin yang dapat mengedit transaksi.')
+                    ->error()
+                    ->show();
+                return;
+            }
+
+            $transaction = Transaction::with(['user', 'partner', 'items.product'])
+                ->findOrFail($transactionId);
+
+            // Validate edit conditions
+            if ($transaction->status !== 'completed') {
+                LivewireAlert::title('Tidak Dapat Diedit!')
+                    ->text('Hanya transaksi yang sudah selesai yang dapat diedit.')
+                    ->warning()
+                    ->show();
+                return;
+            }
+
+            // Check 24-hour time limit
+            if ($transaction->created_at->diffInHours(now()) > 24) {
+                LivewireAlert::title('Tidak Dapat Diedit!')
+                    ->text('Transaksi hanya dapat diedit dalam 24 jam setelah dibuat.')
+                    ->warning()
+                    ->show();
+                return;
+            }
+
+            $this->editingTransaction = $transaction;
+            $this->showEditModal = true;
+
+        } catch (\Exception $e) {
+            LivewireAlert::title('Error!')
+                ->text('Gagal memuat transaksi untuk diedit: ' . $e->getMessage())
+                ->error()
+                ->show();
+        }
+    }
+
+    public function closeEditModal()
+    {
+        $this->showEditModal = false;
+        $this->editingTransaction = null;
     }
 
     public function refreshTransactions()

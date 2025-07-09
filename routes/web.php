@@ -75,6 +75,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
+    
+    // Backdating Sales Feature
+    Route::get('/backdating-sales', [AdminController::class, 'backdatingSales'])->name('backdating-sales');
      
 });
 

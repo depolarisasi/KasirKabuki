@@ -185,22 +185,46 @@
                                 </span>
                             </td>
                             <td>
-                                <button wire:click="viewTransactionDetail({{ $transaction->id }})" 
-                                        class="btn btn-info btn-xs ">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                    Detail
-                                </button>
-                                <a  href="{{ route('receipt.print', $transaction->id) }}"
-                                    class="btn btn-warning btn-xs">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                </svg>
-                                Print
-                            </a>
+                                <div class="flex gap-1">
+                                    <button wire:click="viewTransactionDetail({{ $transaction->id }})" 
+                                            class="btn btn-info btn-xs">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        Detail
+                                    </button>
+                                    
+                                    {{-- Edit Button - Admin Only --}}
+                                    @if(auth()->user() && auth()->user()->hasRole('admin'))
+                                        @if($transaction->status === 'completed' && $transaction->created_at->diffInHours(now()) <= 24)
+                                            <button wire:click="editTransaction({{ $transaction->id }})" 
+                                                    class="btn btn-warning btn-xs"
+                                                    title="Edit transaksi (dalam 24 jam)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                                Edit
+                                            </button>
+                                        @else
+                                            <button class="btn btn-disabled btn-xs" 
+                                                    title="Transaksi tidak dapat diedit (melebihi 24 jam atau belum selesai)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                </svg>
+                                                Edit
+                                            </button>
+                                        @endif
+                                    @endif
+                                    
+                                    <a href="{{ route('receipt.print', $transaction->id) }}"
+                                       class="btn btn-success btn-xs">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-4a1 1 0 00-1-1H9a1 1 0 00-1 1v4a1 1 0 001 1zm3-5h2m-2-3h2m-2-3h2"></path>
+                                        </svg>
+                                        Print
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -322,6 +346,44 @@
                 <div class="modal-action">
                     <button wire:click="closeDetailModal" class="btn">Tutup</button>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Transaction Edit Modal --}}
+    @if($showEditModal && $editingTransaction)
+        <div class="modal modal-open">
+            <div class="modal-box w-11/12 max-w-6xl max-h-screen overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-lg">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Edit Transaksi: {{ $editingTransaction->transaction_code }}
+                    </h3>
+                    <button wire:click="closeEditModal" class="btn btn-ghost btn-sm btn-circle">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Warning Alert --}}
+                <div class="alert alert-warning mb-4">
+                    <svg class="w-6 h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-bold">Peringatan Edit Transaksi</h4>
+                        <p class="text-sm">
+                            Transaksi hanya dapat diedit dalam 24 jam setelah dibuat. 
+                            Semua perubahan akan dicatat dalam audit trail.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Embed TransactionEditComponent --}}
+                @livewire('transaction-edit-component', ['transactionId' => $editingTransaction->id], key('transaction-edit-'.$editingTransaction->id))
             </div>
         </div>
     @endif

@@ -40,6 +40,8 @@ class UserManagement extends Component
 
     protected $paginationTheme = 'bootstrap';
 
+    protected $listeners = ['deleteUser'];
+
     public function mount()
     {
         $this->loadRoles();
@@ -277,9 +279,11 @@ class UserManagement extends Component
         $this->dispatch('confirm-delete', ['userId' => $userId]);
     }
 
-    public function deleteUser($userId)
+    public function deleteUser($data)
     {
         try {
+            $userId = $data['userId'];
+            
             // Prevent deleting current user
             if ($userId == auth()->id()) {
                 LivewireAlert::title('Error!')
@@ -290,10 +294,12 @@ class UserManagement extends Component
             }
 
             $user = User::findOrFail($userId);
+            $userName = $user->name;
+            
             $user->delete();
 
             LivewireAlert::title('Berhasil!')
-                ->text('User berhasil dihapus.')
+                ->text("User \"{$userName}\" berhasil dihapus.")
                 ->success()
                 ->show();
 

@@ -56,11 +56,19 @@ class Transaction extends Model
     }
 
     /**
-     * Relationship with TransactionItems
+     * Get the items for this transaction.
      */
     public function items(): HasMany
     {
         return $this->hasMany(TransactionItem::class);
+    }
+
+    /**
+     * Get the audit trails for this transaction.
+     */
+    public function audits(): HasMany
+    {
+        return $this->hasMany(TransactionAudit::class)->orderBy('changed_at', 'desc');
     }
 
     /**

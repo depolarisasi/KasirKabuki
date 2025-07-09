@@ -933,6 +933,175 @@ class TransactionService
     }
 
     /**
+     * Complete backdated transaction with custom date (Admin only)
+     */
+    public function completeBackdatedTransaction($orderType, $customDate, $partnerId = null, $paymentMethod = 'cash', $notes = null)
+    {
+        try {
+            \DB::beginTransaction();
+
+            // Validate cart first
+            $this->validateCartForCheckout();
+            
+            $cart = $this->getCart();
+            $cartTotals = $this->getCartTotals();
+            
+            if (empty($cart)) {
+                throw new \Exception('Keranjang belanja kosong.');
+            }
+
+            // Validate admin user
+            if (!auth()->user() || !auth()->user()->hasRole('admin')) {
+                throw new \Exception('Hanya admin yang dapat melakukan backdating penjualan.');
+            }
+
+            // Validate custom date
+            $backdateTimestamp = Carbon::parse($customDate);
+            if ($backdateTimestamp->isFuture()) {
+                throw new \Exception('Tanggal backdating tidak boleh di masa depan.');
+            }
+
+            // Validate online order requirements
+            if ($orderType === 'online' && !$partnerId) {
+                throw new \Exception('Partner harus dipilih untuk pesanan online.');
+            }
+
+            // Create transaction record with custom date
+            $transaction = \App\Models\Transaction::create([
+                'transaction_code' => $this->generateTransactionCode(),
+                'user_id' => auth()->id(),
+                'order_type' => $orderType,
+                'partner_id' => $partnerId,
+                'subtotal' => $cartTotals['subtotal'],
+                'total_discount' => $cartTotals['total_discount'],
+                'final_total' => $cartTotals['final_total'],
+                'payment_method' => $paymentMethod,
+                'status' => 'pending',
+                'discount_details' => $cartTotals['applied_discounts'],
+                'notes' => $notes,
+                'is_backdated' => true,
+                'created_by_admin_id' => auth()->id(),
+                'created_at' => $backdateTimestamp,
+                'updated_at' => $backdateTimestamp,
+            ]);
+
+            // Calculate partner commission if online order
+            if ($orderType === 'online' && $partnerId) {
+                $partner = \App\Models\Partner::find($partnerId);
+                if ($partner) {
+                    $transaction->partner_commission = $cartTotals['subtotal'] * ($partner->commission_rate / 100);
+                    $transaction->save();
+                }
+            }
+
+            // Create transaction items
+            foreach ($cart as $productId => $item) {
+                $product = \App\Models\Product::find($productId);
+                if (!$product) {
+                    throw new \Exception("Produk '{$item['name']}' tidak ditemukan.");
+                }
+
+                // Calculate item discount if any
+                $itemDiscountAmount = 0;
+                foreach ($cartTotals['applied_discounts'] as $discountData) {
+                    if ($discountData['type'] === 'product' && $discountData['product_id'] == $productId) {
+                        $itemTotal = $item['price'] * $item['quantity'];
+                        if ($discountData['value_type'] === 'percentage') {
+                            $itemDiscountAmount = $itemTotal * ($discountData['value'] / 100);
+                        } else {
+                            $itemDiscountAmount = $discountData['value'];
+                        }
+                        break;
+                    }
+                }
+
+                $subtotal = $item['price'] * $item['quantity'];
+                $total = $subtotal - $itemDiscountAmount;
+
+                $transactionItem = $transaction->items()->create([
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_price' => $product->price,
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $subtotal,
+                    'discount_amount' => $itemDiscountAmount,
+                    'total' => $total,
+                    'created_at' => $backdateTimestamp,
+                    'updated_at' => $backdateTimestamp,
+                ]);
+
+                // Reduce stock using new StockService with package support dan transaction reference
+                $stockService = app(\App\Services\StockService::class);
+                try {
+                    $stockService->logSale(
+                        $product->id,
+                        auth()->id(),
+                        $item['quantity'],
+                        $transaction->id,
+                        "Backdated Sale - {$transaction->transaction_code}",
+                        $backdateTimestamp // Pass custom timestamp to stock log
+                    );
+                } catch (\Exception $stockError) {
+                    // Log stock reduction error but don't fail transaction
+                    \Log::warning('Stock reduction failed during backdated transaction', [
+                        'transaction_id' => $transaction->id,
+                        'product_id' => $product->id,
+                        'quantity' => $item['quantity'],
+                        'custom_date' => $customDate,
+                        'error' => $stockError->getMessage()
+                    ]);
+                }
+            }
+
+            // Mark transaction as completed with custom timestamp
+            $transaction->status = 'completed';
+            $transaction->completed_at = $backdateTimestamp;
+            $transaction->save();
+
+            // Update Stock Sate data automatically (with special handling for backdated)
+            $stockSateService = app(StockSateService::class);
+            try {
+                $transactionItems = [];
+                foreach ($cart as $productId => $item) {
+                    $transactionItems[] = [
+                        'product_id' => $productId,
+                        'quantity' => $item['quantity']
+                    ];
+                }
+                
+                $stockSateService->updateStockFromTransaction($transactionItems);
+                
+                \Log::info('Stock Sate updated from backdated transaction completion', [
+                    'transaction_id' => $transaction->id,
+                    'transaction_code' => $transaction->transaction_code,
+                    'backdated_to' => $customDate,
+                    'items_count' => count($transactionItems),
+                    'admin_id' => auth()->id()
+                ]);
+                
+            } catch (\Exception $stockSateError) {
+                // Log stock sate error but don't fail transaction
+                \Log::warning('Stock Sate update failed during backdated transaction', [
+                    'transaction_id' => $transaction->id,
+                    'custom_date' => $customDate,
+                    'error' => $stockSateError->getMessage()
+                ]);
+            }
+
+            // Clear cart and session data
+            $this->clearCart();
+
+            \DB::commit();
+
+            return $transaction;
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Calculate checkout summary
      */
     public function getCheckoutSummary($orderType, $partnerId = null)

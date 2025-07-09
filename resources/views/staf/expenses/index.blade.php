@@ -1,34 +1,38 @@
-<x-layouts.app>
-    <x-slot name="title">Pencatatan Pengeluaran - KasirBraga</x-slot>
+@extends('layouts.app')
 
-    <div class="container mx-auto py-2">
-        <!-- Page Header -->
-        <div class="mb-6">
-            <div class="breadcrumbs text-sm">
-                <ul>
-                    <li><a href="{{ route('staf.dashboard') }}">Dashboard</a></li>
-                    <li>Pengeluaran</li>
-                </ul>
-            </div>
+@section('title', 'Pencatatan Pengeluaran - KasirBraga')
+
+@section('content')
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Pencatatan Pengeluaran</h1>
+            <p class="text-white">Catat semua pengeluaran operasional harian</p>
         </div>
-
-        <!-- Expenses Management Content -->
-        <div class="bg-base-100">
-            <div class="max-w-7xl mx-auto">
-                <div class="card bg-base-200 shadow-xl border border-base-300">
-                    <div class="card-body">
-                        <div class="p-6 text-base-content">
-                            <div class="mb-6">
-                                <h1 class="text-2xl font-bold text-base-content">Pencatatan Pengeluaran</h1>
-                                <p class="text-base-content/70 mt-2">Catat semua pengeluaran operasional harian</p>
-                            </div>
-                            
-                            {{-- Expenses Management Component --}}
-                            @livewire('expense-management')
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <a href="{{ route('staf.dashboard') }}" class="btn btn-ghost">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Dashboard
+            </a>
         </div>
     </div>
-</x-layouts.app> 
+
+    <!-- Expense Management Card -->
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                Manajemen Pengeluaran
+            </h2>
+            
+            {{-- Expenses Management Component --}}
+            @livewire('expense-management')
+        </div>
+    </div>
+</div>
+@endsection 

@@ -1,35 +1,38 @@
-<x-layouts.app>
-    <x-slot name="title">Laporan Stok - KasirBraga</x-slot>
+@extends('layouts.app')
 
-    <div class="container mx-auto py-2">
-        <!-- Page Header -->
-        <div class="mb-6">
-            <div class="breadcrumbs text-sm">
-                <ul>
-                    <li><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-                    <li><a href="{{ route('admin.reports') }}">Laporan</a></li>
-                    <li>Stok</li>
-                </ul>
-            </div>
+@section('title', 'Laporan Stok - KasirBraga')
+
+@section('content')
+<div class="container mx-auto px-8 py-4 bg-base-200">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Laporan Stok</h1>
+            <p class="text-white">Rekonsiliasi dan riwayat pergerakan stok</p>
         </div>
-
-        <!-- Stock Report Content -->
-        <div class="bg-base-100">
-            <div class="max-w-7xl mx-auto">
-                <div class="card bg-base-200 shadow-xl border border-base-300">
-                    <div class="card-body">
-                        <div class="p-6 text-base-content">
-                            <div class="mb-6">
-                                <h1 class="text-2xl font-bold text-base-content">Laporan Stok</h1>
-                                <p class="text-base-content/70 mt-2">Rekonsiliasi dan riwayat pergerakan stok</p>
-                            </div>
-                            
-                            {{-- Embedded Livewire Component --}}
-                            <livewire:stock-report-component />
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="flex gap-2 mt-4 sm:mt-0">
+            <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Dashboard
+            </a>
         </div>
     </div>
-</x-layouts.app> 
+
+    <!-- Stock Report Card -->
+    <div class="card bg-base-300 shadow-lg">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                </svg>
+                Dashboard Laporan Stok
+            </h2>
+            
+            {{-- Embedded Livewire Component --}}
+            <livewire:stock-report-component />
+        </div>
+    </div>
+</div>
+@endsection 

@@ -90,6 +90,7 @@ Route::middleware(['auth', 'role:admin|investor'])->prefix('admin')->name('admin
     // Test Receipt Route
     Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
     Route::get('/receipt/{transaction}', [StafController::class, 'receiptPrint'])->name('receipt.print');
+    Route::get('/android-print/{transaction}', [StafController::class, 'androidPrintResponse'])->name('android.print.response');
 
 // Staff Routes - Protected by auth and staf or admin role (investor removed from general access)
 Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->group(function () {

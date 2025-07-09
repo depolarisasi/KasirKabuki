@@ -314,6 +314,31 @@
         .print-button-container button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 0 5px; }
         .print-button-container button.secondary { background: #6c757d; }
         .print-button-container button:disabled { background: #aaa; }
+        .android-print-btn {
+            display: inline-block;
+            background: #4CAF50; /* A green color for Android */
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+            margin: 0 5px;
+            min-width: 100px;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .android-print-btn:hover,
+        .android-print-btn:active {
+            background: #388E3C;
+            transform: scale(0.98);
+        }
+        .android-instructions {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -382,12 +407,37 @@
 
 {{-- Tombol Cetak Baru --}}
 <div class="print-button-container">
+    @php
+        // Build Android Print URL with payment amount parameter
+        $paymentAmount = request()->input('payment_amount', $transaction->final_total);
+        $androidPrintUrl = route('android.print.response', $transaction->id) . '?payment_amount=' . $paymentAmount;
+        $bluetoothSchemeUrl = 'my.bluetoothprint.scheme://' . $androidPrintUrl;
+    @endphp
+    
+    <!-- Android Bluetooth Print Button -->
+    <a href="{{ $bluetoothSchemeUrl }}" class="android-print-btn">
+        📱 Cetak via Android Bluetooth
+    </a>
+    
+    <!-- Traditional Bluetooth Print Button -->
     <button id="bluetooth-print-btn">
-        🖨️ Cetak via Bluetooth
+        🖨️ Cetak via Bluetooth PC
     </button>
+    
+    <!-- Regular Print Button -->
     <button onclick="window.print()" class="secondary">
         ⎙ Cetak Biasa / Simpan PDF
     </button>
+    
+    <!-- Android Instructions -->
+    <div class="android-instructions">
+        <small>
+            <strong>📱 Untuk Android:</strong><br>
+            1. Install app "Bluetooth Print" dari Play Store<br>
+            2. Aktifkan "Browser Print function" di app<br>
+            3. Klik tombol "Cetak via Android Bluetooth" di atas
+        </small>
+    </div>
 </div>
 
 {{-- 2. Lewatkan data ke JavaScript menggunakan @json --}}

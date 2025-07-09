@@ -194,6 +194,18 @@
                     Testing...
                 </span>
             </button>
+            
+            <button wire:click="testAndroidPrint" type="button" class="btn btn-outline btn-success">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                <span wire:loading.remove wire:target="testAndroidPrint">📱 Test Android Print</span>
+                <span wire:loading wire:target="testAndroidPrint">
+                    <span class="loading loading-spinner loading-sm"></span>
+                    Testing...
+                </span>
+            </button>
+
             <button type="submit" class="btn btn-primary">
                 <svg wire:loading wire:target="updateSettings" class="animate-spin w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -251,14 +263,13 @@
 </div>
 
 <script>
-    // Handle test receipt window opening
-    document.addEventListener('livewire:init', () => {
-        Livewire.on('open-test-receipt', (event) => {
-            // Build URL with test data parameters
-            const testData = event[0].testData;
-            const params = new URLSearchParams(testData);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle test receipt window opening - Livewire 3.x modern syntax
+        document.addEventListener('open-test-receipt', function(event) {
+            // Build query parameters from test data
+            const params = new URLSearchParams(event.detail.testData);
             const testUrl = '{{ route("test-receipt") }}?' + params.toString();
-            
+
             // Open test receipt in new window optimized for printing
             const testWindow = window.open(
                 testUrl, 
@@ -266,9 +277,39 @@
                 'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no'
             );
             
-            // Focus the new window
             if (testWindow) {
                 testWindow.focus();
+            }
+        });
+
+        // Handle Android test print - Livewire 3.x modern syntax
+        document.addEventListener('open-android-test-print', function(event) {
+            // Build query parameters from test data
+            const params = new URLSearchParams(event.detail.testData);
+            const androidTestUrl = '{{ route("android.test.print") }}?' + params.toString();
+            const bluetoothSchemeUrl = 'my.bluetoothprint.scheme://' + androidTestUrl;
+
+            // Try to open Android Bluetooth Print app
+            try {
+                window.location.href = bluetoothSchemeUrl;
+                
+                // Show instructions if app doesn't open
+                setTimeout(() => {
+                    // Create instruction alert using modern JavaScript
+                    const instructions = [
+                        'Jika app Bluetooth Print tidak terbuka:',
+                        '',
+                        '1. Install "Bluetooth Print" dari Play Store',
+                        '2. Enable "Browser Print function" di app settings', 
+                        '3. Pastikan thermal printer terhubung via Bluetooth',
+                        '4. Coba kembali test print setelah setup selesai'
+                    ].join('\n');
+                    
+                    alert(instructions);
+                }, 2000);
+            } catch (error) {
+                console.error('Error launching Android print:', error);
+                alert('Error: Tidak dapat membuka app Bluetooth Print.\n\nPastikan app sudah terinstall dan URL scheme didukung.');
             }
         });
     });

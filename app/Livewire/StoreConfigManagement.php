@@ -125,6 +125,35 @@ class StoreConfigManagement extends Component
         }
     }
 
+    public function testAndroidPrint()
+    {
+        try {
+            // Generate test data for Android print
+            $testData = [
+                'store_name' => $this->store_name ?: 'Nama Toko',
+                'store_address' => $this->store_address,
+                'store_phone' => $this->store_phone,
+                'receipt_header' => $this->receipt_header,
+                'receipt_footer' => $this->receipt_footer,
+                'show_receipt_logo' => $this->show_receipt_logo,
+            ];
+
+            // Open Android test print
+            $this->dispatch('open-android-test-print', ['testData' => $testData]);
+            
+            LivewireAlert::title('Android Test Print')
+                ->text('Launching Android Bluetooth Print app untuk test print.')
+                ->info()
+                ->show();
+            
+        } catch (\Exception $e) {
+            LivewireAlert::title('Error!')
+                ->text('Gagal membuka Android test print: ' . $e->getMessage())
+                ->error()
+                ->show();
+        }
+    }
+
     public function resetToDefault()
     {
         $this->store_name = 'Sate Braga';

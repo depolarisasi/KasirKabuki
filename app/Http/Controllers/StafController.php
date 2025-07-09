@@ -84,6 +84,15 @@ class StafController extends Controller
         // Build JSON array for Bluetooth Print app
         $printData = [];
         
+        // Store Logo (if enabled and exists) - Type 1 (image)
+        if ($storeSettings->show_receipt_logo && $storeSettings->receipt_logo_path) {
+            $objLogo = new \stdClass();
+            $objLogo->type = 1; // image
+            $objLogo->path = url($storeSettings->receipt_logo_path); // Full URL to image
+            $objLogo->align = 1; // center
+            $printData[] = $objLogo;
+        }
+        
         // Header - Store Name (Center, Bold, Large)
         $obj1 = new \stdClass();
         $obj1->type = 0; // text
@@ -310,23 +319,7 @@ class StafController extends Controller
         $objEnd->align = 1; // center
         $objEnd->format = 0; // normal
         $printData[] = $objEnd;
-        
-        // Empty lines for cutting
-        $objEmpty2 = new \stdClass();
-        $objEmpty2->type = 0; // text
-        $objEmpty2->content = ' ';
-        $objEmpty2->bold = 0;
-        $objEmpty2->align = 0; // left
-        $objEmpty2->format = 0; // normal
-        $printData[] = $objEmpty2;
-        
-        $objEmpty3 = new \stdClass();
-        $objEmpty3->type = 0; // text
-        $objEmpty3->content = ' ';
-        $objEmpty3->bold = 0;
-        $objEmpty3->align = 0; // left
-        $objEmpty3->format = 0; // normal
-        $printData[] = $objEmpty3;
+         
         
         // Return JSON response for Bluetooth Print app
         return response()->json($printData, 200, [], JSON_FORCE_OBJECT);

@@ -27,7 +27,9 @@
             
             body {
                 margin: 0 !important;
-                padding: 0 !important; 
+                padding: 0 !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: 12px !important;
                 line-height: 1.2 !important;
                 background: white !important;
                 width: 80mm !important;
@@ -57,7 +59,9 @@
         @media screen and (max-width: 768px) {
             body {
                 margin: 10px;
-                padding: 10px; 
+                padding: 10px;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
                 line-height: 1.4;
                 background: #f5f5f5;
                 -webkit-text-size-adjust: 100%;
@@ -79,7 +83,9 @@
         @media screen and (min-width: 769px) {
             body {
                 margin: 20px;
-                padding: 20px; 
+                padding: 20px;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
                 line-height: 1.4;
                 background: #f5f5f5;
             }
@@ -120,18 +126,21 @@
             max-width: 60px;
         }
         
-        .store-name { 
+        .store-name {
+            font-size: 16px;
             font-weight: bold;
             text-align: center;
             margin-bottom: 3px;
         }
         
-        .store-info { 
+        .store-info {
+            font-size: 11px;
             text-align: center;
             margin-bottom: 2px;
         }
         
-        .header-text { 
+        .header-text {
+            font-size: 11px;
             text-align: center;
             margin: 8px 0;
         }
@@ -141,23 +150,27 @@
             margin: 10px 0;
         }
         
-        .order-title { 
+        .order-title {
+            font-size: 14px;
             font-weight: bold;
             margin-bottom: 5px;
         }
         
-        .order-name { 
+        .order-name {
+            font-size: 12px;
             margin-bottom: 3px;
         }
         
-        .order-date { 
+        .order-date {
+            font-size: 11px;
             margin-bottom: 5px;
         }
         
         .items-header {
             display: flex;
             justify-content: space-between;
-            font-weight: bold; 
+            font-weight: bold;
+            font-size: 11px;
             margin: 8px 0 5px 0;
             padding-bottom: 2px;
             border-bottom: 1px solid #333;
@@ -167,7 +180,8 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 3px; 
+            margin-bottom: 3px;
+            font-size: 11px;
         }
         
         .item-name {
@@ -187,7 +201,8 @@
         }
         
         .totals-section {
-            margin: 10px 0; 
+            margin: 10px 0;
+            font-size: 11px;
         }
         
         .total-row {
@@ -197,19 +212,22 @@
         }
         
         .total-row.final {
-            font-weight: bold; 
+            font-weight: bold;
+            font-size: 12px;
             margin-top: 5px;
             padding-top: 3px;
             border-top: 1px solid #333;
         }
         
         .payment-section {
-            margin: 8px 0; 
+            margin: 8px 0;
+            font-size: 11px;
         }
         
         .footer {
             text-align: center;
-            margin-top: 10px; 
+            margin-top: 10px;
+            font-size: 10px;
         }
         
         .print-button {
@@ -271,12 +289,14 @@
             border: 1px solid #2196f3;
             border-radius: 8px;
             padding: 15px;
-            margin: 10px 0; 
+            margin: 10px 0;
+            font-size: 12px;
         }
         
         .bluetooth-guide h4 {
             margin: 0 0 10px 0;
-            color: #1976d2; 
+            color: #1976d2;
+            font-size: 14px;
         }
         
         .bluetooth-guide ol {

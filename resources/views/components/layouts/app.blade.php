@@ -52,9 +52,7 @@
         
         <!-- Livewire Scripts -->
         @livewireScripts
-        
-        <!-- LivewireAlert Scripts -->
-        @livewireAlertScripts 
+         
         
         <!-- SweetAlert -->
         @include('sweetalert::alert')

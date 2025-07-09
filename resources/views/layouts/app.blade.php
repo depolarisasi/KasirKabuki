@@ -55,9 +55,7 @@
         
         <!-- Livewire Scripts -->
         @livewireScripts
-        
-        <!-- LivewireAlert Scripts -->
-        @livewireAlertScripts
+         
          
         
         <!-- SweetAlert -->

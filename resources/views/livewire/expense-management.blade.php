@@ -192,7 +192,7 @@
                                 </td>
                                 <td>
                                     <div class="flex items-center space-x-2"> 
-                                        <span class="text-sm">{{ $expense->user->name }}</span>
+                                        <span class="text-sm">{{ $expense->user->name ?? 'N/A' }}</span>
                                     </div>
                                 </td>
                                 <td>

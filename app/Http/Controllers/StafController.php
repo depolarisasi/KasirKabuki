@@ -175,7 +175,8 @@ class StafController extends Controller
             
             $objDate = new \stdClass();
             $objDate->type = 0; // text
-            $objDate->content = 'Waktu: ' . $transaction->created_at->locale('id')->isoFormat('D MMM Y, HH:mm');
+            $dateToUse = $transaction->transaction_date ?: $transaction->created_at;
+            $objDate->content = 'Waktu: ' . $dateToUse->locale('id')->isoFormat('D MMM Y, HH:mm');
             $objDate->bold = 0;
             $objDate->align = 0; // left
             $objDate->format = 0; // normal

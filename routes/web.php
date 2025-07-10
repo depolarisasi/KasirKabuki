@@ -76,8 +76,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     
+    // Audit Trail - Transaction Edit History
+    Route::get('/audit-trail', function () {
+        return view('admin.audit-trail');
+    })->name('audit-trail');
+    
     // Backdating Sales Feature
-    Route::get('/backdating-sales', [AdminController::class, 'backdatingSales'])->name('backdating-sales');
+    Route::get('backdating-sales', [AdminController::class, 'backdatingSales'])->name('backdating-sales');
      
 });
 

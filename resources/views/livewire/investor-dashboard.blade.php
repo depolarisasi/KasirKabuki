@@ -179,7 +179,7 @@
                                 <div>
                                     <div class="font-semibold text-sm">{{ $transaction['transaction_code'] }}</div>
                                     <div class="text-xs text-base-content/60">
-                                        {{ \Carbon\Carbon::parse($transaction['created_at'])->format('d M Y, H:i') }}
+                                        {{ \Carbon\Carbon::parse($transaction['transaction_date'] ?: $transaction['created_at'])->format('d M Y, H:i') }}
                                     </div>
                                     <div class="text-xs">
                                         @if($transaction['partner'])

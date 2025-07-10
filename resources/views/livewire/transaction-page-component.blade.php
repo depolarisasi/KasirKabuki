@@ -164,7 +164,7 @@
                             </td>
                             <td>
                                 <div class="flex items-center gap-2"> 
-                                    <span class="text-sm">{{ $transaction->user->name }}</span>
+                                    <span class="text-sm">{{ $transaction->user->name ?? 'N/A' }}</span>
                                 </div>
                             </td>
                             <td> 
@@ -197,7 +197,7 @@
                                     
                                     {{-- Edit Button - Admin Only --}}
                                     @if(auth()->user() && auth()->user()->hasRole('admin'))
-                                        @if($transaction->status === 'completed' && $transaction->created_at->diffInHours(now()) <= 24)
+                                        @if($transaction->status === 'completed' && ($transaction->transaction_date ?: $transaction->created_at)->diffInHours(now()) <= 24)
                                             <button wire:click="editTransaction({{ $transaction->id }})" 
                                                     class="btn btn-warning btn-xs"
                                                     title="Edit transaksi (dalam 24 jam)">
@@ -272,7 +272,7 @@
                     <div class="space-y-2">
                         <div><strong>Kode:</strong> {{ $selectedTransaction->transaction_code }}</div>
                         <div><strong>Tanggal:</strong> {{ $selectedTransaction->formatted_date }}</div>
-                        <div><strong>Kasir:</strong> {{ $selectedTransaction->user->name }}</div>
+                        <div><strong>Kasir:</strong> {{ $selectedTransaction->user->name ?? 'N/A' }}</div>
                         <div><strong>Status:</strong> 
                             <span class="badge {{ $this->getStatusBadgeClass($selectedTransaction->status) }}">
                                 {{ $selectedTransaction->status_label }}
@@ -283,7 +283,7 @@
                         <div><strong>Jenis Pesanan:</strong> {{ $this->getOrderTypeLabel($selectedTransaction->order_type) }}</div>
                         <div><strong>Metode Bayar:</strong> {{ $this->getPaymentMethodLabel($selectedTransaction->payment_method) }}</div>
                         @if($selectedTransaction->partner)
-                            <div><strong>Partner:</strong> {{ $selectedTransaction->partner->name }}</div>
+                            <div><strong>Partner:</strong> {{ $selectedTransaction->partner->name ?? 'N/A' }}</div>
                             <div><strong>Komisi:</strong> {{ $selectedTransaction->formatted_partner_commission }}</div>
                         @endif
                         @if($selectedTransaction->notes)
@@ -311,7 +311,7 @@
                                     <td>
                                         <div class="font-semibold">{{ $item->product_name }}</div>
                                         @if($item->product && $item->product->category)
-                                            <div class="text-xs text-base-content/70">{{ $item->product->category->name }}</div>
+                                            <div class="text-xs text-base-content/70">{{ $item->product->category->name ?? 'N/A' }}</div>
                                         @endif
                                     </td>
                                     <td>{{ $this->formatCurrency($item->product_price) }}</td>
@@ -352,8 +352,8 @@
 
     {{-- Transaction Edit Modal --}}
     @if($showEditModal && $editingTransaction)
-        <div class="modal modal-open">
-            <div class="modal-box w-11/12 max-w-6xl max-h-screen overflow-y-auto">
+        <div class="modal modal-open" wire:click.self="closeEditModal">
+            <div class="modal-box w-11/12 max-w-6xl max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold text-lg">
                         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,7 +361,10 @@
                         </svg>
                         Edit Transaksi: {{ $editingTransaction->transaction_code }}
                     </h3>
-                    <button wire:click="closeEditModal" class="btn btn-ghost btn-sm btn-circle">
+                    <button wire:click="closeEditModal" 
+                            onclick="event.stopPropagation()" 
+                            class="btn btn-ghost btn-sm btn-circle"
+                            title="Tutup modal">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>

@@ -219,20 +219,33 @@ class DashboardService
      */
     private function getProductStats($startDate, $endDate)
     {
-        // Low stock alerts
-        $lowStockProducts = Product::whereRaw('CAST(current_stock AS SIGNED) <= CAST(min_stock AS SIGNED)')
-            ->whereRaw('CAST(current_stock AS SIGNED) > 0')
-            ->with('category')
-            ->get();
-
-        // Out of stock products
-        $outOfStockProducts = Product::where(function($query) {
-                $query->where('current_stock', '0')
-                      ->orWhere('current_stock', '')
-                      ->orWhereNull('current_stock');
-            })
-            ->with('category')
-            ->get();
+        // Get all products first
+        $allProducts = Product::with('category')->get();
+        
+        // Low stock alerts - using StockLog system
+        $lowStockProducts = collect();
+        $outOfStockProducts = collect();
+        $activeProductsCount = 0;
+        
+        foreach ($allProducts as $product) {
+            $currentStock = $product->getCurrentStock();
+            $minStock = $product->min_stock ?? 0;
+            
+            // Check low stock
+            if ($currentStock > 0 && $currentStock <= $minStock) {
+                $lowStockProducts->push($product);
+            }
+            
+            // Check out of stock (exclude sate products as they don't require stock)
+            if ($currentStock <= 0 && $product->type !== 'sate') {
+                $outOfStockProducts->push($product);
+            }
+            
+            // Count active products
+            if ($currentStock > 0 || $product->type === 'sate') {
+                $activeProductsCount++;
+            }
+        }
 
         // Products with no sales
         $productsWithSales = DB::table('transaction_items')
@@ -251,10 +264,7 @@ class DashboardService
             'out_of_stock' => $outOfStockProducts,
             'no_sales' => $productsWithoutSales,
             'total_products' => Product::count(),
-            'active_products' => Product::where(function($query) {
-                $query->where('current_stock', '>', '0')
-                      ->orWhere('type', 'sate'); // Sate doesn't require stock
-            })->count(),
+            'active_products' => $activeProductsCount,
         ];
     }
 
@@ -327,10 +337,25 @@ class DashboardService
     {
         $alerts = [];
 
-        // Low stock alerts
-        $lowStockCount = Product::whereRaw('CAST(current_stock AS SIGNED) <= CAST(min_stock AS SIGNED)')
-            ->whereRaw('CAST(current_stock AS SIGNED) > 0')
-            ->count();
+        // Count low stock and out of stock products using StockLog system
+        $allProducts = Product::with('category')->get();
+        $lowStockCount = 0;
+        $outOfStockCount = 0;
+        
+        foreach ($allProducts as $product) {
+            $currentStock = $product->getCurrentStock();
+            $minStock = $product->min_stock ?? 0;
+            
+            // Count low stock
+            if ($currentStock > 0 && $currentStock <= $minStock) {
+                $lowStockCount++;
+            }
+            
+            // Count out of stock (exclude sate products)
+            if ($currentStock <= 0 && $product->type !== 'sate') {
+                $outOfStockCount++;
+            }
+        }
 
         if ($lowStockCount > 0) {
             $alerts[] = [
@@ -342,15 +367,6 @@ class DashboardService
                 'action_text' => 'Lihat Stok',
             ];
         }
-
-        // Out of stock alerts
-        $outOfStockCount = Product::where(function($query) {
-                $query->where('current_stock', '0')
-                      ->orWhere('current_stock', '')
-                      ->orWhereNull('current_stock');
-            })
-            ->where('type', '!=', 'sate') // Sate doesn't require stock
-            ->count();
 
         if ($outOfStockCount > 0) {
             $alerts[] = [

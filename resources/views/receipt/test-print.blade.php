@@ -282,7 +282,7 @@
                 {{ $transaction->created_at->locale('id')->isoFormat('dddd, D MMMM Y HH:mm') }}
             </div>
             <div class="order-name" style="margin-top: 5px;">Transaksi: {{ $transaction->transaction_code }}</div>
-            <div class="order-name">Kasir: {{ $transaction->user->name }}</div>
+            <div class="order-name">Kasir: {{ $transaction->user->name ?? 'N/A' }}</div>
         </div>
  
 

@@ -21,6 +21,7 @@ class TransactionEditComponent extends Component
     public $orderType = '';
     public $partnerId = null;
     public $paymentMethod = '';
+    public $transactionDate = '';
     public $editReason = '';
     
     // Transaction items editing
@@ -37,11 +38,15 @@ class TransactionEditComponent extends Component
         'orderType' => 'required|in:dine_in,take_away,online',
         'partnerId' => 'nullable|exists:partners,id',
         'paymentMethod' => 'required|in:cash,qris,aplikasi',
+        'transactionDate' => 'required|date|before_or_equal:today',
         'editReason' => 'required|string|max:500',
         'editableItems.*.quantity' => 'required|integer|min:1',
     ];
 
     protected $messages = [
+        'transactionDate.required' => 'Tanggal transaksi harus diisi.',
+        'transactionDate.date' => 'Format tanggal tidak valid.',
+        'transactionDate.before_or_equal' => 'Tanggal transaksi tidak boleh di masa depan.',
         'editReason.required' => 'Alasan edit harus diisi.',
         'editableItems.*.quantity.required' => 'Kuantitas harus diisi.',
         'editableItems.*.quantity.min' => 'Kuantitas minimal 1.',
@@ -83,6 +88,7 @@ class TransactionEditComponent extends Component
             'order_type' => $this->transaction->order_type,
             'partner_id' => $this->transaction->partner_id,
             'payment_method' => $this->transaction->payment_method,
+            'transaction_date' => $this->transaction->transaction_date ? $this->transaction->transaction_date->format('Y-m-d') : null,
             'items' => $this->transaction->items->map(function ($item) {
                 return [
                     'id' => $item->id,
@@ -99,6 +105,7 @@ class TransactionEditComponent extends Component
         $this->orderType = $this->transaction->order_type;
         $this->partnerId = $this->transaction->partner_id;
         $this->paymentMethod = $this->transaction->payment_method;
+        $this->transactionDate = $this->transaction->transaction_date ? $this->transaction->transaction_date->format('Y-m-d') : now()->format('Y-m-d');
 
         // Initialize editable items
         $this->editableItems = $this->transaction->items->map(function ($item) {
@@ -238,6 +245,14 @@ class TransactionEditComponent extends Component
             ];
         }
 
+        if ($this->transactionDate !== $this->originalData['transaction_date']) {
+            $changes[] = [
+                'field' => 'Tanggal Transaksi',
+                'old' => $this->originalData['transaction_date'] ? Carbon::parse($this->originalData['transaction_date'])->format('d/m/Y') : '(tidak ada)',
+                'new' => $this->transactionDate ? Carbon::parse($this->transactionDate)->format('d/m/Y') : '(tidak ada)'
+            ];
+        }
+
         // Check item quantity changes
         foreach ($this->editableItems as $item) {
             if ($item['quantity'] != $item['original_quantity']) {
@@ -300,11 +315,25 @@ class TransactionEditComponent extends Component
 
     private function updateTransactionFields()
     {
+        // Parse transaction date and preserve original time if it exists
+        $transactionDate = $this->transactionDate ? Carbon::parse($this->transactionDate) : null;
+        if ($transactionDate && $this->transaction->transaction_date) {
+            // Preserve original time
+            $originalTime = $this->transaction->transaction_date;
+            $transactionDate = $transactionDate->setHour($originalTime->hour)
+                                             ->setMinute($originalTime->minute)
+                                             ->setSecond($originalTime->second);
+        } elseif ($transactionDate) {
+            // If no original time, set to current time
+            $transactionDate = $transactionDate->setTime(now()->hour, now()->minute, now()->second);
+        }
+
         $this->transaction->update([
             'notes' => $this->notes,
             'order_type' => $this->orderType,
             'partner_id' => $this->partnerId,
             'payment_method' => $this->paymentMethod,
+            'transaction_date' => $transactionDate,
         ]);
     }
 

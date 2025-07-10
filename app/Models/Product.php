@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\ProductPartnerPrice;
 
 class Product extends Model
 {
@@ -154,6 +155,29 @@ class Product extends Model
     {
         $price = $this->getAppropriatePrice($orderType, $partnerId);
         return 'Rp ' . number_format($price, 0, ',', '.');
+    }
+
+    /**
+     * Check if this product has partner price for given order type and partner
+     * 
+     * @param string $orderType - 'dine_in', 'take_away', or 'online'
+     * @param int|null $partnerId - Partner ID for online orders
+     * @return bool
+     */
+    public function hasPartnerPrice($orderType = 'dine_in', $partnerId = null)
+    {
+        // For dine_in and take_away, no partner pricing
+        if (in_array($orderType, ['dine_in', 'take_away'])) {
+            return false;
+        }
+
+        // For online orders, check if partner has special price
+        if ($orderType === 'online' && $partnerId) {
+            $partnerPrice = ProductPartnerPrice::getPriceForPartner($this->id, $partnerId);
+            return $partnerPrice !== null;
+        }
+
+        return false;
     }
 
     /**

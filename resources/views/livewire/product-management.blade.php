@@ -96,7 +96,7 @@
                                 </td>
                                 <td>
                                     <div class="badge badge-outline">
-                                        {{ $product->category->name }}
+                                        {{ $product->category->name ?? 'N/A' }}
                                     </div>
                                 </td>
                                 <td>

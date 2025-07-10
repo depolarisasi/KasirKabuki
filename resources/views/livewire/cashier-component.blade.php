@@ -71,7 +71,7 @@
                                     </h3>
 
                                     <div class="text-center">
-                                        <div class="badge badge-outline badge-xs mb-2">{{ $product->category->name }}
+                                        <div class="badge badge-outline badge-xs mb-2">{{ $product->category->name ?? 'N/A' }}
                                         </div>
                                         @php
                                             $basePrice = $product->getAppropriatePrice($orderType, $selectedPartner);

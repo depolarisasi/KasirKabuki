@@ -145,7 +145,7 @@
                                     
                                     <div class="card-body">
                                         <h4 class="card-title text-sm">{{ $product->name }}</h4>
-                                        <p class="text-xs text-base-content/70">{{ $product->category->name }}</p>
+                                        <p class="text-xs text-base-content/70">{{ $product->category->name ?? 'N/A' }}</p>
                                         
                                         {{-- Price Display --}}
                                         <div class="flex items-center justify-between mt-2">

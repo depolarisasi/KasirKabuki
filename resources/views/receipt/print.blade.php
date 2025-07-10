@@ -341,8 +341,8 @@
             'transaction' => [
                 'code' => $transaction->transaction_code,
                 'notes' => $transaction->notes,
-                'date' => $transaction->created_at->locale('id')->isoFormat('D MMM Y, HH:mm'),
-                'cashier' => $transaction->user->name,
+                'date' => ($transaction->transaction_date ?: $transaction->created_at)->locale('id')->isoFormat('D MMM Y, HH:mm'),
+                'cashier' => $transaction->user->name ?? 'N/A',
             ],
             'items' => $transaction->items->map(function ($item) {
                 return [

@@ -822,6 +822,7 @@ class TransactionService
                 'status' => 'pending',
                 'discount_details' => $cartTotals['applied_discounts'],
                 'notes' => $notes,
+                'transaction_date' => now(),
             ]);
 
             // Calculate partner commission if online order
@@ -979,6 +980,7 @@ class TransactionService
                 'status' => 'pending',
                 'discount_details' => $cartTotals['applied_discounts'],
                 'notes' => $notes,
+                'transaction_date' => $backdateTimestamp,
                 'is_backdated' => true,
                 'created_by_admin_id' => auth()->id(),
                 'created_at' => $backdateTimestamp,

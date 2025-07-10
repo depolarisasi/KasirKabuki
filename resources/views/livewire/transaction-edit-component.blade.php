@@ -32,7 +32,7 @@
                 </div>
                 <div>
                     <span class="font-semibold">Kasir:</span><br>
-                    <span>{{ $transaction->user->name }}</span>
+                    <span>{{ $transaction->user->name ?? 'N/A' }}</span>
                 </div>
                 <div>
                     <span class="font-semibold">Waktu Edit Tersisa:</span><br>
@@ -101,6 +101,27 @@
                             <span class="label-text-alt text-error">{{ $message }}</span>
                         </label>
                     @enderror
+                </div>
+
+                {{-- Transaction Date --}}
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-medium">Tanggal Transaksi <span class="text-error">*</span></span>
+                    </label>
+                    <input type="date" 
+                           wire:model.live="transactionDate" 
+                           max="{{ now()->format('Y-m-d') }}"
+                           class="input input-bordered w-full @error('transactionDate') input-error @enderror" />
+                    @error('transactionDate')
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ $message }}</span>
+                        </label>
+                    @enderror
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/70">
+                            Tanggal tidak boleh di masa depan. Format otomatis akan menyesuaikan jam transaksi asli.
+                        </span>
+                    </label>
                 </div>
 
                 {{-- Notes --}}

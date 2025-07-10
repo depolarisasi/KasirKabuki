@@ -46,12 +46,12 @@
                     
                     <div class="flex justify-between">
                         <span class="text-base-content/70">Tanggal & Waktu:</span>
-                        <span>{{ $transaction->created_at->format('d F Y, H:i') }}</span>
+                        <span>{{ $transaction->formatted_date }}</span>
                     </div>
                     
                     <div class="flex justify-between">
                         <span class="text-base-content/70">Kasir:</span>
-                        <span>{{ $transaction->user->name }}</span>
+                        <span>{{ $transaction->user->name ?? 'N/A' }}</span>
                     </div>
                     
                     <div class="flex justify-between">
@@ -67,7 +67,7 @@
                     @if($transaction->partner)
                         <div class="flex justify-between">
                             <span class="text-base-content/70">Partner Online:</span>
-                            <span>{{ $transaction->partner->name }} ({{ $transaction->partner->commission_rate }}%)</span>
+                            <span>{{ $transaction->partner->name ?? 'N/A' }} ({{ $transaction->partner->commission_rate ?? 0 }}%)</span>
                         </div>
                     @endif
                     

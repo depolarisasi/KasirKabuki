@@ -26,6 +26,7 @@ class Transaction extends Model
         'discount_details',
         'notes',
         'completed_at',
+        'transaction_date',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class Transaction extends Model
         'final_total' => 'decimal:2',
         'discount_details' => 'array',
         'completed_at' => 'datetime',
+        'transaction_date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -88,27 +90,27 @@ class Transaction extends Model
     }
 
     /**
-     * Scope for specific date
+     * Scope for specific date - uses transaction_date as primary date field
      */
     public function scopeForDate($query, $date)
     {
-        return $query->whereDate('created_at', $date);
+        return $query->whereDate('transaction_date', $date);
     }
 
     /**
-     * Scope for date range
+     * Scope for date range - uses transaction_date as primary date field
      */
     public function scopeBetweenDates($query, $startDate, $endDate)
     {
-        return $query->whereBetween('created_at', [$startDate, $endDate]);
+        return $query->whereBetween('transaction_date', [$startDate, $endDate]);
     }
 
     /**
-     * Scope for today's transactions
+     * Scope for today's transactions - uses transaction_date as primary date field
      */
     public function scopeToday($query)
     {
-        return $query->whereDate('created_at', Carbon::today());
+        return $query->whereDate('transaction_date', Carbon::today());
     }
 
     /**
@@ -195,19 +197,21 @@ class Transaction extends Model
     }
 
     /**
-     * Get formatted date for display
+     * Get formatted date for display - prioritizes transaction_date over created_at
      */
     public function getFormattedDateAttribute()
     {
-        return $this->created_at->format('d F Y H:i');
+        $date = $this->transaction_date ?: $this->created_at;
+        return $date->format('d F Y H:i');
     }
 
     /**
-     * Get short formatted date
+     * Get short formatted date - prioritizes transaction_date over created_at
      */
     public function getShortDateAttribute()
     {
-        return $this->created_at->format('d/m/Y H:i');
+        $date = $this->transaction_date ?: $this->created_at;
+        return $date->format('d/m/Y H:i');
     }
 
     /**

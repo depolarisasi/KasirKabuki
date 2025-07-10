@@ -1,4 +1,4 @@
-# Task List Implementation #41
+# Task List Implementation #46
 
 ## Request Overview
 Fix bug error "Stok tidak mencukupi untuk Sate Dada Asin Mune 10 Tusuk. Stok tersedia: 0" padahal stock sudah diupdate hari ini. Root cause: disconnect antara StockSate system (untuk input harian) dan StockLog system (untuk validasi save order).

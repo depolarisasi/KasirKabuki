@@ -94,6 +94,22 @@ class AdminController extends Controller
     }
 
     /**
+     * Display audit trail configuration page.
+     */
+    public function auditTrailConfig()
+    {
+        return view('admin.config.audit-trail');
+    }
+
+    /**
+     * Display stock sate configuration page.
+     */
+    public function stockSateConfig()
+    {
+        return view('admin.config.stock-sate');
+    }
+
+    /**
      * Display reports index page.
      */
     public function reports()
@@ -115,14 +131,6 @@ class AdminController extends Controller
     public function expensesReport()
     {
         return view('admin.reports.expenses');
-    }
-
-    /**
-     * Display stock report page.
-     */
-    public function stockReport()
-    {
-        return view('admin.reports.stock');
     }
     
     /**

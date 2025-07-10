@@ -15,14 +15,6 @@ class StafController extends Controller
     }
     
     /**
-     * Display stock management page.
-     */
-    public function stock()
-    {
-        return view('staf.stock.index');
-    }
-    
-    /**
      * Display stock sate management page.
      */
     public function stockSate()

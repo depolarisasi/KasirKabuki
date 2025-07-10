@@ -62,35 +62,40 @@ Route::middleware(['auth'])->group(function () {
     })->name('dashboard');
 });
 
-// Admin Routes - Protected by auth and admin role
+// Admin routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::get('/config', [AdminController::class, 'config'])->name('config');
-    Route::get('/store-config', [AdminController::class, 'storeConfig'])->name('store-config');
-    Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
-    
-    // Management Pages
     Route::get('/categories', [AdminController::class, 'categories'])->name('categories');
     Route::get('/products', [AdminController::class, 'products'])->name('products');
     Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
     Route::get('/discounts', [AdminController::class, 'discounts'])->name('discounts');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
+    Route::get('/backdating-sales', [AdminController::class, 'backdatingSales'])->name('backdating-sales');
+    Route::get('/config', [AdminController::class, 'config'])->name('config');
+    Route::get('/config/store', [AdminController::class, 'storeConfig'])->name('config.store');
+    Route::get('/config/audit-trail', [AdminController::class, 'auditTrailConfig'])->name('config.audit-trail');
+    Route::get('/config/stock-sate', function () {
+        return redirect()->route('staf.stock-sate');
+    })->name('config.stock-sate');
     
-    // Audit Trail - Transaction Edit History
-    Route::get('/audit-trail', function () {
-        return view('admin.audit-trail');
-    })->name('audit-trail');
+    // Reports routes (remove stock report)
+    Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+    Route::get('/reports/sales', [AdminController::class, 'salesReport'])->name('reports.sales');
+    Route::get('/reports/expenses', [AdminController::class, 'expensesReport'])->name('reports.expenses');
     
-    // Backdating Sales Feature
-    Route::get('backdating-sales', [AdminController::class, 'backdatingSales'])->name('backdating-sales');
-     
+    // Test receipt
+    Route::get('/test-receipt', [AdminController::class, 'testReceipt'])->name('test-receipt');
+    
+    // API endpoints
+    Route::get('/api/stats/{period}', [AdminController::class, 'getDashboardStats'])->name('api.stats');
+    Route::get('/api/stats/custom/{startDate}/{endDate}', [AdminController::class, 'getCustomStats'])->name('api.custom-stats');
 });
 
-// Admin Reports - Accessible by admin and investor
+// Admin Routes - Accessible by admin and investor for reports
 Route::middleware(['auth', 'role:admin|investor'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/reports/sales', [AdminController::class, 'salesReport'])->name('reports.sales');
     Route::get('/reports/expenses', [AdminController::class, 'expensesReport'])->name('reports.expenses');
-    Route::get('/reports/stock', [AdminController::class, 'stockReport'])->name('reports.stock');
+    // Removed stock report route - no longer needed with simplified approach
 });
 
 // Receipt and Print Routes - Accessible by staff and admin 

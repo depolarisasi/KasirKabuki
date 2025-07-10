@@ -155,7 +155,7 @@
                                         <li><a href="{{ route('admin.partners') }}">Partner</a></li>
                                         <li><a href="{{ route('admin.discounts') }}">Diskon</a></li>
                                         <li><a href="{{ route('admin.users') }}">User Management</a></li>
-                                        <li><a href="{{ route('admin.audit-trail') }}">Audit Trail</a></li>
+                                        <li><a href="{{ route('admin.config.audit-trail') }}">Audit Trail</a></li>
                                         <li><a href="{{ route('admin.backdating-sales') }}">Backdating Sales</a></li>
                                     </ul>
                                 </details>
@@ -172,7 +172,7 @@
                                     </summary>
                                     <ul class="p-2 bg-base-100 rounded-box w-52">
                                         <li><a href="{{ route('admin.reports.sales') }}">Penjualan</a></li>
-                                        <li><a href="{{ route('admin.reports.stock') }}">Stok</a></li>
+                                        <li><a href="{{ route('admin.config.stock-sate') }}">Stok Sate</a></li>
                                         <li><a href="{{ route('admin.reports.expenses') }}">Pengeluaran</a></li>
                                     </ul>
                                 </details>

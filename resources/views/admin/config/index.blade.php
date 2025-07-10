@@ -12,7 +12,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
             <!-- Store Config Card -->
-            <a href="/admin/store-config" class="card bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-200 hover:shadow-lg transition-all duration-300 group">
+            <a href="{{ route('admin.config.store') }}" class="card bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-200 hover:shadow-lg transition-all duration-300 group">
                 <div class="card-body items-center text-center">
                     <div class="w-16 h-16 bg-blue-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,6 +21,32 @@
                     </div>
                     <h3 class="card-title text-lg">Konfigurasi Toko</h3>
                     <p class="text-sm text-base-content/70">Informasi toko, logo, dan pengaturan struk</p>
+                </div>
+            </a>
+
+            <!-- Audit Trail Card -->
+            <a href="{{ route('admin.config.audit-trail') }}" class="card bg-gradient-to-br from-orange-500/10 to-orange-600/10 border border-orange-200 hover:shadow-lg transition-all duration-300 group">
+                <div class="card-body items-center text-center">
+                    <div class="w-16 h-16 bg-orange-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                    </div>
+                    <h3 class="card-title text-lg">Audit Trail</h3>
+                    <p class="text-sm text-base-content/70">Riwayat perubahan data dan aktivitas sistem</p>
+                </div>
+            </a>
+
+            <!-- Stock Sate Management Card -->
+            <a href="{{ route('admin.config.stock-sate') }}" class="card bg-gradient-to-br from-teal-500/10 to-teal-600/10 border border-teal-200 hover:shadow-lg transition-all duration-300 group">
+                <div class="card-body items-center text-center">
+                    <div class="w-16 h-16 bg-teal-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                    </div>
+                    <h3 class="card-title text-lg">Stock Sate</h3>
+                    <p class="text-sm text-base-content/70">Manajemen stok sate dan reconciliation</p>
                 </div>
             </a>
 

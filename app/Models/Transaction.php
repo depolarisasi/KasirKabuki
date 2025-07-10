@@ -27,6 +27,7 @@ class Transaction extends Model
         'notes',
         'completed_at',
         'transaction_date',
+        'cashier_name',
     ];
 
     protected $casts = [
@@ -71,6 +72,14 @@ class Transaction extends Model
     public function audits(): HasMany
     {
         return $this->hasMany(TransactionAudit::class)->orderBy('changed_at', 'desc');
+    }
+
+    /**
+     * Get the discounts applied to this transaction.
+     */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(TransactionDiscount::class);
     }
 
     /**

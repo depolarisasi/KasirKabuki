@@ -75,10 +75,17 @@ class BusinessException extends Exception
         );
     }
 
-    public static function insufficientStock(string $productName, int $available = 0): self
+    public static function insufficientStock(string $productName, int $available = null): self
     {
+        // If available stock is provided, include it in the message
+        if ($available !== null) {
+            $message = "Stok tidak mencukupi untuk {$productName}. Stok tersedia: {$available}";
+        } else {
+            $message = "Stok tidak mencukupi untuk {$productName}";
+        }
+        
         return new self(
-            "Stok tidak mencukupi untuk {$productName}. Stok tersedia: {$available}",
+            $message,
             'INSUFFICIENT_STOCK',
             400
         );

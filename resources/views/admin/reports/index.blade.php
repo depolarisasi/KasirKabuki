@@ -25,7 +25,7 @@
             </a>
 
             <!-- Stock Report Card -->
-            <a href="{{ route('admin.reports.stock') }}" class="card bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border border-cyan-200 hover:shadow-lg transition-all duration-300 group">
+            <a href="{{ route('admin.config.stock-sate') }}" class="card bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border border-cyan-200 hover:shadow-lg transition-all duration-300 group">
                 <div class="card-body items-center text-center">
                     <div class="w-16 h-16 bg-cyan-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

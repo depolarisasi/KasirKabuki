@@ -7,7 +7,7 @@ use App\Models\Transaction;
 use App\Models\TransactionAudit;
 use App\Models\Product;
 use App\Models\Partner;
-use App\Services\StockService;
+use App\Models\StockSate;
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Carbon\Carbon;
 
@@ -339,8 +339,6 @@ class TransactionEditComponent extends Component
 
     private function updateTransactionItems()
     {
-        $stockService = app(StockService::class);
-
         foreach ($this->editableItems as $editableItem) {
             $originalItem = collect($this->originalData['items'])
                 ->firstWhere('id', $editableItem['id']);
@@ -365,25 +363,22 @@ class TransactionEditComponent extends Component
                         'total' => $newTotal,
                     ]);
 
-                    // Handle stock adjustment
-                    if ($quantityDiff > 0) {
-                        // Increased quantity - reduce stock further
-                        $stockService->logSale(
-                            $editableItem['product_id'],
-                            auth()->id(),
-                            $quantityDiff,
-                            $this->transaction->id,
-                            "Transaction edit - quantity increased - {$this->transaction->transaction_code}"
+                    // Handle stock adjustment for sate products only
+                    $product = Product::find($editableItem['product_id']);
+                    if ($product && $product->isSateProduct()) {
+                        $transactionDate = $this->transaction->transaction_date ?? $this->transaction->created_at;
+                        $stockSate = StockSate::createOrGetStock(
+                            $transactionDate->format('Y-m-d'),
+                            $product->jenis_sate
                         );
-                    } else {
-                        // Decreased quantity - return stock
-                        $stockService->logCancellationReturn(
-                            $editableItem['product_id'],
-                            auth()->id(),
-                            abs($quantityDiff),
-                            $this->transaction->id,
-                            "Transaction edit - quantity decreased - {$this->transaction->transaction_code}"
-                        );
+
+                        if ($quantityDiff > 0) {
+                            // Increased quantity - increase sold count
+                            $stockSate->addStokTerjual($quantityDiff);
+                        } else {
+                            // Decreased quantity - reduce sold count
+                            $stockSate->reduceStokTerjual(abs($quantityDiff));
+                        }
                     }
                 }
             }

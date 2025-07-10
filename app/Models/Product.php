@@ -78,11 +78,43 @@ class Product extends Model
     }
 
     /**
-     * Get stock logs untuk this product
+     * Get stock sate entries for this product (jika ini produk sate)
      */
-    public function stockLogs(): HasMany
+    public function getStockSateForDate($date = null)
     {
-        return $this->hasMany(StockLog::class);
+        if (!$this->jenis_sate) {
+            return null; // Non-sate products tidak memerlukan stock tracking
+        }
+        
+        $date = $date ?: now()->format('Y-m-d');
+        return \App\Models\StockSate::getStockForDateAndJenis($date, $this->jenis_sate);
+    }
+
+    /**
+     * Get current stock - hanya untuk produk sate
+     */
+    public function getCurrentStock()
+    {
+        if (!$this->jenis_sate || !$this->quantity_effect) {
+            return null; // Non-sate products tidak memerlukan stock tracking
+        }
+
+        $stockSateEntry = $this->getStockSateForDate();
+        
+        if ($stockSateEntry) {
+            $availableStockSate = ($stockSateEntry->stok_awal ?? 0) - ($stockSateEntry->stok_terjual ?? 0);
+            return floor($availableStockSate / $this->quantity_effect);
+        }
+        
+        return 0;
+    }
+
+    /**
+     * Check if this is a sate product that requires stock tracking
+     */
+    public function isSateProduct()
+    {
+        return !empty($this->jenis_sate) && !empty($this->quantity_effect);
     }
 
     /**
@@ -270,21 +302,16 @@ class Product extends Model
     }
 
     /**
-     * Get current stock using new StockLog system
-     */
-    public function getCurrentStock()
-    {
-        return \App\Models\StockLog::getCurrentStock($this->id);
-    }
-
-    /**
-     * Check if package has enough component stock
+     * Check if package has enough component stock - SIMPLIFIED for sate products only
      */
     public function hasEnoughStockForPackage($quantity = 1)
     {
         if (!$this->isPackageProduct()) {
-            // For regular products, check normal stock
+            // For regular products, hanya check stock jika sate product
+            if ($this->isSateProduct()) {
             return $this->getCurrentStock() >= $quantity;
+            }
+            return true; // Non-sate products tidak perlu stock check
         }
 
         // For package products, check all component stocks
@@ -298,15 +325,19 @@ class Product extends Model
     }
 
     /**
-     * Get component stock status for package products
+     * Get component stock status for package products - SIMPLIFIED
      */
     public function getPackageStockStatus($quantity = 1)
     {
         if (!$this->isPackageProduct()) {
+            $currentStock = $this->isSateProduct() ? $this->getCurrentStock() : null;
+            $isSufficient = $this->isSateProduct() ? ($currentStock >= $quantity) : true;
+            
             return [
                 'is_package' => false,
-                'current_stock' => $this->getCurrentStock(),
-                'is_sufficient' => $this->getCurrentStock() >= $quantity
+                'is_sate_product' => $this->isSateProduct(),
+                'current_stock' => $currentStock,
+                'is_sufficient' => $isSufficient
             ];
         }
 
@@ -331,127 +362,97 @@ class Product extends Model
     }
 
     /**
-     * Calculate maximum package quantity yang bisa dibuat dari component stocks
+     * Calculate maximum package quantity - SIMPLIFIED for sate products only
      */
     public function getMaxPackageQuantityFromComponents()
     {
         if (!$this->isPackageProduct()) {
+            if ($this->isSateProduct()) {
             return $this->getCurrentStock();
+            }
+            return null; // Non-sate products tidak perlu stock calculation
         }
 
         $maxQuantity = PHP_INT_MAX;
 
         foreach ($this->activeComponents as $component) {
+            if ($component->componentProduct->isSateProduct()) {
             $componentStock = $component->componentProduct->getCurrentStock();
             $possibleQuantity = floor($componentStock / $component->quantity_per_package);
             $maxQuantity = min($maxQuantity, $possibleQuantity);
+            }
         }
 
-        return $maxQuantity === PHP_INT_MAX ? 0 : $maxQuantity;
+        return $maxQuantity === PHP_INT_MAX ? null : $maxQuantity;
     }
 
     /**
-     * Reduce stock for package sale (affects component stocks)
+     * DEPRECATED - Stock operations tidak diperlukan dengan simplified approach
+     * Sate products hanya menggunakan StockSate system
      */
     public function reduceStockForSale($quantity, $userId, $transactionId = null, $notes = null)
     {
-        if (!$this->isPackageProduct()) {
-            // Regular product - reduce own stock
-            return \App\Models\StockLog::logSale(
-                $this->id,
-                $userId,
-                $quantity,
-                $transactionId,
-                $notes ?: "Penjualan produk {$this->name}"
-            );
-        }
-
-        // Package product - reduce component stocks
-        $movements = [];
-        foreach ($this->activeComponents as $component) {
-            $componentQuantity = $component->calculateTotalComponentQuantity($quantity);
-            $movements[] = \App\Models\StockLog::logSale(
-                $component->component_product_id,
-                $userId,
-                $componentQuantity,
-                $transactionId,
-                $notes ?: "Penjualan package {$this->name} - component {$component->componentProduct->name}"
-            );
-        }
-
-        return $movements;
+        // Stock reduction ditangani oleh StockSateService untuk sate products
+        // Non-sate products tidak perlu stock tracking
+        return null;
     }
 
     /**
-     * Return stock for cancelled sale (reverse stock reduction)
+     * DEPRECATED - Stock operations tidak diperlukan dengan simplified approach
      */
     public function returnStockForCancellation($quantity, $userId, $transactionId = null, $notes = null)
     {
-        if (!$this->isPackageProduct()) {
-            // Regular product - return own stock
-            return \App\Models\StockLog::logCancellationReturn(
-                $this->id,
-                $userId,
-                $quantity,
-                $transactionId,
-                $notes ?: "Return pembatalan {$this->name}"
-            );
-        }
-
-        // Package product - return component stocks
-        $movements = [];
-        foreach ($this->activeComponents as $component) {
-            $componentQuantity = $component->calculateTotalComponentQuantity($quantity);
-            $movements[] = \App\Models\StockLog::logCancellationReturn(
-                $component->component_product_id,
-                $userId,
-                $componentQuantity,
-                $transactionId,
-                $notes ?: "Return pembatalan package {$this->name} - component {$component->componentProduct->name}"
-            );
-        }
-
-        return $movements;
+        // Stock return ditangani oleh StockSateService untuk sate products
+        // Non-sate products tidak perlu stock tracking
+        return null;
     }
 
     /**
-     * Get detailed stock information
+     * Get simplified stock information
      */
     public function getStockInfo()
     {
-        // Ensure relationships are loaded to prevent N+1 queries
-        $this->loadMissing(['activeComponents.componentProduct', 'packagesUsingThisComponent.packageProduct']);
-        
         $info = [
             'product_id' => $this->id,
             'product_name' => $this->name,
+            'is_sate_product' => $this->isSateProduct(),
             'is_package' => $this->isPackageProduct(),
             'is_component' => $this->isComponentProduct(),
-            'current_stock' => $this->getCurrentStock(),
         ];
+
+        if ($this->isSateProduct()) {
+            $info['current_stock'] = $this->getCurrentStock();
+            $info['jenis_sate'] = $this->jenis_sate;
+            $info['quantity_effect'] = $this->quantity_effect;
+        } else {
+            $info['current_stock'] = null; // Non-sate products tidak memerlukan stock tracking
+        }
 
         if ($this->isPackageProduct()) {
             $info['package_info'] = [
                 'max_makeable' => $this->getMaxPackageQuantityFromComponents(),
                 'components' => $this->activeComponents->map(function ($component) {
                     return [
+                        'component_id' => $component->component_product_id,
                         'component_name' => $component->componentProduct->name,
-                        'required_per_package' => $component->quantity_per_package,
-                        'current_stock' => $component->componentProduct->getCurrentStock(),
-                        'unit' => $component->unit
+                        'quantity_per_package' => $component->quantity_per_package,
+                        'is_sate_product' => $component->componentProduct->isSateProduct(),
+                        'current_stock' => $component->componentProduct->isSateProduct() 
+                            ? $component->componentProduct->getCurrentStock() 
+                            : null
                     ];
                 })
             ];
         }
 
         if ($this->isComponentProduct()) {
-            $info['used_in_packages'] = $this->packagesUsingThisComponent()
+            $info['used_in_packages'] = $this->packagesUsingThisComponent
                 ->where('is_active', true)
-                ->get()
-                ->map(function ($usage) {
+                ->map(function ($component) {
                     return [
-                        'package_name' => $usage->packageProduct->name,
-                        'quantity_needed' => $usage->quantity_per_package
+                        'package_id' => $component->package_product_id,
+                        'package_name' => $component->packageProduct->name,
+                        'quantity_needed' => $component->quantity_per_package
                     ];
                 });
         }

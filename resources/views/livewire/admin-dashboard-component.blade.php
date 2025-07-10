@@ -362,12 +362,11 @@
 </div>
 
 {{-- Chart.js Initialization --}}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 @script
 <script>
-    // Import Chart.js
-    import { Chart, registerables } from 'https://cdn.skypack.dev/chart.js';
-    Chart.register(...registerables);
-
     let dailySalesChart, hourlyPatternChart, orderTypeChart, paymentMethodChart, expensesCategoryChart;
 
     function initializeCharts() {

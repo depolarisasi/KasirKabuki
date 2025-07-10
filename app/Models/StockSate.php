@@ -61,11 +61,22 @@ class StockSate extends Model
     }
 
     /**
-     * Calculate selisih berdasarkan stok awal, terjual, dan akhir
+     * Calculate selisih berdasarkan business SOP
+     * Formula: Sisa Seharusnya = Stok Awal - Stok Terjual
+     *          Selisih = Stok Akhir - Sisa Seharusnya
      */
     public function calculateSelisih(): int
     {
-        return ($this->stok_awal ?? 0) - ($this->stok_terjual ?? 0) - ($this->stok_akhir ?? 0);
+        $sisaSeharusnya = ($this->stok_awal ?? 0) - ($this->stok_terjual ?? 0);
+        return ($this->stok_akhir ?? 0) - $sisaSeharusnya;
+    }
+
+    /**
+     * Get sisa seharusnya (Stok Awal - Stok Terjual)
+     */
+    public function getSisaSeharusnya(): int
+    {
+        return ($this->stok_awal ?? 0) - ($this->stok_terjual ?? 0);
     }
 
     /**
@@ -106,6 +117,7 @@ class StockSate extends Model
      */
     public static function createOrGetStock($date, $jenis)
     {
+        try {
         return static::firstOrCreate([
             'tanggal_stok' => $date,
             'jenis_sate' => $jenis,
@@ -117,6 +129,46 @@ class StockSate extends Model
             'selisih' => 0,
             'tanggalwaktu_pengisian' => now(),
         ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle duplicate key error (race condition)
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false || 
+                strpos($e->getMessage(), 'unique_daily_sate_stock') !== false) {
+                // Fall back to just find the existing record
+                $existingRecord = static::where('tanggal_stok', $date)
+                            ->where('jenis_sate', $jenis)
+                            ->first();
+                
+                // If still not found, create manually with DB transaction
+                if (!$existingRecord) {
+                    try {
+                        \DB::transaction(function () use ($date, $jenis, &$existingRecord) {
+                            $existingRecord = static::create([
+                                'tanggal_stok' => $date,
+                                'jenis_sate' => $jenis,
+                                'staf_pengisi' => 1,
+                                'stok_awal' => 0,
+                                'stok_terjual' => 0,
+                                'stok_akhir' => 0,
+                                'selisih' => 0,
+                                'tanggalwaktu_pengisian' => now(),
+                            ]);
+                        });
+                    } catch (\Exception $innerE) {
+                        \Log::error("Failed to create stock entry even with transaction", [
+                            'date' => $date,
+                            'jenis_sate' => $jenis,
+                            'error' => $innerE->getMessage()
+                        ]);
+                        return null;
+                    }
+                }
+                
+                return $existingRecord;
+            }
+            
+            // Re-throw if it's a different error
+            throw $e;
+        }
     }
 
     /**

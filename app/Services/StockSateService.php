@@ -18,7 +18,7 @@ class StockSateService
 
     /**
      * Ensure daily stock entries exist untuk tanggal tertentu
-     * Menggunakan session/cookies untuk optimization
+     * Menggunakan auto-creation logic untuk semua jenis sate
      * 
      * @param string $date Format Y-m-d
      * @return \Illuminate\Support\Collection
@@ -38,8 +38,8 @@ class StockSateService
             }
         }
         
-        // Create entries dan set session
-        $entries = $this->createDailyEntries($date);
+        // Use auto-creation logic untuk ensure all entries
+        $entries = $this->ensureAllJenisSateEntries($date);
         Session::put($sessionKey, true);
         
         return $entries;
@@ -70,28 +70,103 @@ class StockSateService
         $entries = collect();
         
         foreach (StockSate::getJenisSateOptions() as $jenis) {
-            $stock = StockSate::createOrGetStock($date, $jenis);
-            $entries->push($stock);
+            try {
+                $stock = StockSate::createOrGetStock($date, $jenis);
+                
+                if ($stock) {
+                    $entries->push($stock);
+                } else {
+                    Log::error("Failed to create stock entry for jenis: {$jenis} on date: {$date}");
+                    // Continue dengan jenis lain, jangan stop semua process
+                }
+            } catch (\Exception $e) {
+                Log::error("Error creating stock entry", [
+                    'date' => $date,
+                    'jenis_sate' => $jenis,
+                    'error' => $e->getMessage()
+                ]);
+                // Continue dengan jenis lain
+            }
         }
         
-        Log::info("Daily stock entries created for date: {$date}");
+        Log::info("Daily stock entries created for date: {$date}", [
+            'total_entries' => $entries->count(),
+            'expected_entries' => count(StockSate::getJenisSateOptions())
+        ]);
         
         return $entries;
     }
 
     /**
-     * Update stock saat ada transaksi completed
-     * Deteksi produk yang memiliki jenis_sate dan add ke stok_terjual
+     * Determine correct stock date berdasarkan business SOP
+     * Gunakan previous day stock jika previous day stok_akhir belum diisi (0 atau null)
      * 
-     * @param array $transactionItems Format: [['product_id' => 1, 'quantity' => 2], ...]
-     * @param string $date Format Y-m-d (default today)
+     * @param string|null $transactionDate Format Y-m-d (default today)
+     * @return string Format Y-m-d
+     */
+    public function determineStockDate($transactionDate = null)
+    {
+        if (!$transactionDate) {
+            $transactionDate = now()->format('Y-m-d');
+        }
+        
+        // Check previous day completion
+        $previousDay = Carbon::parse($transactionDate)->subDay()->format('Y-m-d');
+        
+        // Check if previous day stok_akhir sudah diisi untuk all jenis sate
+        $previousDayComplete = $this->isPreviousDayStockComplete($previousDay);
+        
+        if (!$previousDayComplete) {
+            // Use previous day context karena belum complete
+            Log::info("Using previous day stock context", [
+                'transaction_date' => $transactionDate,
+                'stock_date_used' => $previousDay,
+                'reason' => 'Previous day stock not completed'
+            ]);
+            return $previousDay;
+        }
+        
+        // Use current transaction date
+        return $transactionDate;
+    }
+
+    /**
+     * Check if previous day stock is complete (all stok_akhir filled)
+     * 
+     * @param string $date
+     * @return bool
+     */
+    public function isPreviousDayStockComplete($date)
+    {
+        $entries = StockSate::byDate($date)->get();
+        
+        if ($entries->count() < count(StockSate::getJenisSateOptions())) {
+            // Not all entries exist
+            return false;
+        }
+        
+        // Check if all stok_akhir filled (not 0 or null)
+        foreach ($entries as $entry) {
+            if (($entry->stok_akhir ?? 0) <= 0) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Update stock from transaction dengan intelligent date detection
+     * Uses previous day logic sesuai business SOP
+     * 
+     * @param array $transactionItems
+     * @param string|null $transactionDate
      * @return void
      */
-    public function updateStockFromTransaction($transactionItems, $date = null)
+    public function updateStockFromTransaction($transactionItems, $transactionDate = null)
     {
-        if (!$date) {
-            $date = now()->format('Y-m-d');
-        }
+        // Determine correct stock date using business logic
+        $stockDate = $this->determineStockDate($transactionDate);
 
         foreach ($transactionItems as $item) {
             $product = Product::find($item['product_id']);
@@ -101,7 +176,7 @@ class StockSateService
                 $totalEffect = $item['quantity'] * $product->quantity_effect;
                 
                 // Get atau create stock entry untuk jenis sate ini
-                $stockEntry = StockSate::createOrGetStock($date, $product->jenis_sate);
+                $stockEntry = StockSate::createOrGetStock($stockDate, $product->jenis_sate);
                 
                 // Add ke stok terjual
                 $stockEntry->addStokTerjual($totalEffect);
@@ -110,7 +185,8 @@ class StockSateService
                     'product_id' => $product->id,
                     'quantity' => $item['quantity'],
                     'quantity_effect' => $product->quantity_effect,
-                    'date' => $date
+                    'transaction_date' => $transactionDate,
+                    'stock_date_used' => $stockDate
                 ]);
             }
         }
@@ -118,34 +194,37 @@ class StockSateService
 
     /**
      * Update stock saat saved order di-save (reserve stock)
+     * Uses previous day logic sesuai business SOP
      * 
      * @param array $savedOrderItems
-     * @param string $date
+     * @param string|null $transactionDate
      * @return void
      */
-    public function updateStockFromSavedOrder($savedOrderItems, $date = null)
+    public function updateStockFromSavedOrder($savedOrderItems, $transactionDate = null)
     {
-        if (!$date) {
-            $date = now()->format('Y-m-d');
-        }
+        // Use intelligent date detection
+        $stockDate = $this->determineStockDate($transactionDate);
 
-        $this->updateStockFromTransaction($savedOrderItems, $date);
+        $this->updateStockFromTransaction($savedOrderItems, $transactionDate);
         
-        Log::info("Stock updated from saved order for date: {$date}");
+        Log::info("Stock updated from saved order", [
+            'transaction_date' => $transactionDate,
+            'stock_date_used' => $stockDate
+        ]);
     }
 
     /**
      * Return stock saat saved order di-cancel
+     * Uses previous day logic sesuai business SOP
      * 
      * @param array $savedOrderItems
-     * @param string $date
+     * @param string|null $transactionDate
      * @return void
      */
-    public function returnStockFromCancelledOrder($savedOrderItems, $date = null)
+    public function returnStockFromCancelledOrder($savedOrderItems, $transactionDate = null)
     {
-        if (!$date) {
-            $date = now()->format('Y-m-d');
-        }
+        // Use intelligent date detection
+        $stockDate = $this->determineStockDate($transactionDate);
 
         foreach ($savedOrderItems as $item) {
             $product = Product::find($item['product_id']);
@@ -155,7 +234,7 @@ class StockSateService
                 $totalEffect = $item['quantity'] * $product->quantity_effect;
                 
                 // Get stock entry untuk jenis sate ini
-                $stockEntry = StockSate::getStockForDateAndJenis($date, $product->jenis_sate);
+                $stockEntry = StockSate::getStockForDateAndJenis($stockDate, $product->jenis_sate);
                 
                 if ($stockEntry) {
                     // Reduce dari stok terjual
@@ -165,7 +244,8 @@ class StockSateService
                         'product_id' => $product->id,
                         'quantity' => $item['quantity'],
                         'quantity_effect' => $product->quantity_effect,
-                        'date' => $date
+                        'transaction_date' => $transactionDate,
+                        'stock_date_used' => $stockDate
                     ]);
                 }
             }
@@ -173,18 +253,57 @@ class StockSateService
     }
 
     /**
-     * Update stok awal, akhir, atau keterangan oleh staff
-     * Otomatis update staf_pengisi dan tanggalwaktu_pengisian
+     * Ensure ALL jenis sate entries exist untuk specific date
+     * Auto-create all entries saat staff mengisi any stock type
+     * 
+     * @param string $date
+     * @return \Illuminate\Support\Collection
+     */
+    public function ensureAllJenisSateEntries($date)
+    {
+        $entries = collect();
+        
+        foreach (StockSate::getJenisSateOptions() as $jenis) {
+            $stock = StockSate::createOrGetStock($date, $jenis);
+            if ($stock) {
+                $entries->push($stock);
+            }
+        }
+        
+        Log::info("All jenis sate entries ensured for date: {$date}", [
+            'entries_created' => $entries->count(),
+            'expected_entries' => count(StockSate::getJenisSateOptions())
+        ]);
+        
+        return $entries;
+    }
+
+    /**
+     * Update stock by staff dengan auto-creation all entries
+     * Auto-create all jenis sate entries if not exist saat pertama kali input
      * 
      * @param string $date
      * @param string $jenisSate
-     * @param array $data ['stok_awal', 'stok_akhir', 'keterangan']
+     * @param array $data
      * @param int $userId
      * @return StockSate
      */
     public function updateStockByStaff($date, $jenisSate, $data, $userId)
     {
+        // Ensure all jenis sate entries exist saat staff mulai input
+        $this->ensureAllJenisSateEntries($date);
+        
         $stockEntry = StockSate::createOrGetStock($date, $jenisSate);
+        
+        // Add null check untuk prevent error
+        if (!$stockEntry) {
+            Log::error("Failed to create or get stock entry", [
+                'date' => $date,
+                'jenis_sate' => $jenisSate,
+                'user_id' => $userId
+            ]);
+            throw new \Exception("Gagal membuat atau mengambil data stok untuk {$jenisSate} pada tanggal {$date}");
+        }
         
         // Update staf pengisi jika perlu
         $stockEntry->updateStafPengisi($userId);
@@ -202,7 +321,7 @@ class StockSateService
             $stockEntry->keterangan = $data['keterangan'];
         }
         
-        // Update selisih otomatis
+        // Update selisih otomatis dengan formula yang benar
         $stockEntry->updateSelisih();
         
         Log::info("Stock updated by staff for {$jenisSate} on {$date}", [
@@ -294,5 +413,41 @@ class StockSateService
         return Product::whereNotNull('jenis_sate')
                       ->whereNotNull('quantity_effect')
                       ->get();
+    }
+
+    /**
+     * Update stock from sale transaction (backward compatibility)
+     * Maps to updateStockFromTransaction dengan correct parameter format
+     * 
+     * @param string $jenisSate
+     * @param int $totalQuantityEffect
+     * @param string $transactionDate
+     * @return void
+     */
+    public function updateStockFromSale($jenisSate, $totalQuantityEffect, $transactionDate = null)
+    {
+        // Convert old parameter format to new updateStockFromTransaction format
+        $transactionItems = [
+            [
+                'product_id' => null, // Not needed for direct stock update
+                'quantity' => 1,
+                'quantity_effect' => $totalQuantityEffect,
+                'jenis_sate' => $jenisSate
+            ]
+        ];
+        
+        // Determine correct stock date using business logic
+        $stockDate = $this->determineStockDate($transactionDate);
+        
+        // Update stock directly
+        $stockEntry = StockSate::createOrGetStock($stockDate, $jenisSate);
+        $stockEntry->addStokTerjual($totalQuantityEffect);
+        
+        Log::info("Stock updated from sale for {$jenisSate}: +{$totalQuantityEffect}", [
+            'jenis_sate' => $jenisSate,
+            'quantity_effect' => $totalQuantityEffect,
+            'transaction_date' => $transactionDate,
+            'stock_date_used' => $stockDate
+        ]);
     }
 } 

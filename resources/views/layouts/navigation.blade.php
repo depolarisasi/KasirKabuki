@@ -94,12 +94,12 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="{{ route('admin.reports.stock') }}" 
-                                           class="{{ request()->routeIs('admin.reports.stock') ? 'active' : '' }}">
+                                        <a href="{{ route('admin.config.stock-sate') }}"
+                                           class="{{ request()->routeIs('admin.config.stock-sate') ? 'active' : '' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                             </svg>
-                                            Laporan Stok
+                                            Stok Sate
                                         </a>
                                     </li>
                                 </ul>
@@ -187,9 +187,9 @@
                            class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('admin.reports.expenses') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
                             Laporan Pengeluaran
                         </a>
-                        <a href="{{ route('admin.reports.stock') }}" 
-                           class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('admin.reports.stock') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
-                            Laporan Stok
+                        <a href="{{ route('admin.config.stock-sate') }}"
+                           class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('admin.config.stock-sate') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
+                            Stok Sate
                         </a>
                     </div>
                 </div>

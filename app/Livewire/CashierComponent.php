@@ -312,6 +312,32 @@ class CashierComponent extends Component
         }
     }
 
+    public function addDiscount()
+    {
+        try {
+            if (!$this->selectedDiscount) {
+                LivewireAlert::title('Error!')
+                ->text('Pilih diskon terlebih dahulu.')
+                ->error()
+                ->show();
+                return;
+            }
+
+            $this->transactionService->applyDiscount($this->selectedDiscount, $this->orderType);
+            $this->selectedDiscount = ''; // Reset selection
+            LivewireAlert::title('Berhasil!')
+            ->text('Diskon berhasil diterapkan.')
+            ->success()
+            ->show();
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
+
     public function removeDiscount($discountId)
     {
         try {

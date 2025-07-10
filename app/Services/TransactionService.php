@@ -316,408 +316,153 @@ class TransactionService
     }
 
     /**
-     * Save current cart as order dengan stock reduction untuk prevent overselling
+     * Save current cart as order - SIMPLIFIED for sate products only
      */
     public function saveOrder($orderName)
     {
-        try {
-            \DB::beginTransaction();
-            
             $cart = $this->getCart();
-            $cartTotals = $this->getCartTotals();
             
             if (empty($cart)) {
-                throw \App\Exceptions\BusinessException::cartEmpty();
+            throw new \Exception('Keranjang kosong');
             }
             
-            $savedOrders = Session::get('saved_orders', []);
+        // Validate stock untuk sate products ONLY
+        foreach ($cart as $item) {
+            $productId = $item['product_id'];
+            $product = Product::find($productId);
             
-            if (isset($savedOrders[$orderName])) {
-                throw \App\Exceptions\BusinessException::orderAlreadyExists($orderName);
-            }
-            
-            // Check stock availability untuk semua items dan reduce stock
-            $stockService = app(\App\Services\StockService::class);
-            $stockReservations = [];
-            
-            foreach ($cart as $productId => $item) {
-                $product = \App\Models\Product::find($productId);
-                if (!$product) {
-                    throw \App\Exceptions\BusinessException::productNotFound($item['name']);
-                }
-                
+            if ($product) {
                 // Only check stock availability for sate products
-                // Non-sate products can be sold regardless of stock level
-                if ($product->jenis_sate && $product->quantity_effect) {
-                    // Check stock availability with package support
-                    $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
+                if ($product->isSateProduct()) {
+                    $currentStock = $product->getCurrentStock();
                     
-                    if (!$stockCheck['available']) {
-                        throw \App\Exceptions\BusinessException::insufficientStock($product->name);
+                    if ($currentStock < $item['quantity']) {
+                        throw \App\Exceptions\BusinessException::insufficientStock($product->name, $currentStock);
                     }
                 }
-                
-                // Reserve stock by logging as sale temporarily
-                try {
-                    $stockMovements = $stockService->logSale(
-                        $product->id,
-                        auth()->id(),
-                        $item['quantity'],
-                        null, // No transaction ID yet
-                        "Saved order reservation - {$orderName}"
-                    );
-                    
-                    $stockReservations[$productId] = [
-                        'movements' => is_array($stockMovements) ? $stockMovements : [$stockMovements],
-                        'quantity' => $item['quantity']
-                    ];
-                } catch (\Exception $stockError) {
-                    throw new \Exception("Gagal reserve stok untuk {$product->name}: {$stockError->getMessage()}");
-                }
+                // Non-sate products dapat dijual tanpa stock check
             }
-            
-            // Save order dengan stock reservation info
+        }
+
+        // Save order to session with stock validation
+        $savedOrders = Session::get('saved_orders', []);
+        $cartTotals = $this->getCartTotals();
+        
             $savedOrders[$orderName] = [
-                'cart' => $cart,
-                'cart_totals' => $cartTotals,
-                'created_at' => Carbon::now()->toISOString(),
-                'stock_reservations' => $stockReservations,
-                'user_id' => auth()->id()
+            'items' => $cart,
+            'totals' => $cartTotals,
+            'order_type' => Session::get('order_type', 'dine_in'),
+            'partner_id' => Session::get('partner_id'),
+            'payment_method' => Session::get('payment_method', 'cash'),
+            'created_at' => now()->toISOString(),
+            'applied_discounts' => Session::get('applied_discounts', [])
             ];
             
             Session::put('saved_orders', $savedOrders);
-            
-            // Update Stock Sate data for saved order (reserve stock)
-            $stockSateService = app(StockSateService::class);
-            try {
-                $savedOrderItems = [];
-                foreach ($cart as $productId => $item) {
-                    $savedOrderItems[] = [
-                        'product_id' => $productId,
-                        'quantity' => $item['quantity']
-                    ];
-                }
-                
-                $stockSateService->updateStockFromSavedOrder($savedOrderItems);
-                
-                \Log::info('Stock Sate updated from saved order', [
-                    'order_name' => $orderName,
-                    'items_count' => count($savedOrderItems)
-                ]);
-                
-            } catch (\Exception $stockSateError) {
-                // Log stock sate error but don't fail save
-                \Log::warning('Stock Sate update failed during save order', [
-                    'order_name' => $orderName,
-                    'error' => $stockSateError->getMessage()
-                ]);
-            }
-            
-            // Clear current cart
-            $this->clearCart();
-            
-            \DB::commit();
-            
             return $savedOrders[$orderName];
-            
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            
-            // If we have stock reservations that were made, we need to reverse them
-            if (isset($stockReservations)) {
-                $stockService = app(\App\Services\StockService::class);
-                foreach ($stockReservations as $productId => $reservation) {
-                    try {
-                        $stockService->logCancellationReturn(
-                            $productId,
-                            auth()->id(),
-                            $reservation['quantity'],
-                            null,
-                            "Rollback saved order reservation - {$orderName}"
-                        );
-                    } catch (\Exception $rollbackError) {
-                        \Log::error('Failed to rollback stock reservation', [
-                            'product_id' => $productId,
-                            'order_name' => $orderName,
-                            'error' => $rollbackError->getMessage()
-                        ]);
-                    }
-                }
-            }
-            
-            throw $e;
-        }
     }
 
     /**
-     * Load saved order to current cart - stock sudah di-reserve jadi tidak perlu adjust
+     * Load saved order ke cart
      */
     public function loadSavedOrder($orderName)
     {
         $savedOrders = Session::get('saved_orders', []);
         
         if (!isset($savedOrders[$orderName])) {
-            throw \App\Exceptions\BusinessException::orderNotFound($orderName);
+            throw new \Exception('Pesanan tidak ditemukan');
         }
         
-        $savedOrder = $savedOrders[$orderName];
+        $order = $savedOrders[$orderName];
         
-        // Validate that saved order has required data
-        if (!isset($savedOrder['cart']) || empty($savedOrder['cart'])) {
-            throw \App\Exceptions\BusinessException::orderNotFound('Data pesanan tersimpan tidak valid');
-        }
-        
-        // Verify stock reservations are still valid (optional check)
-        if (isset($savedOrder['stock_reservations'])) {
-            $stockService = app(\App\Services\StockService::class);
+        // Validate current stock untuk sate products sebelum load
+        foreach ($order['items'] as $item) {
+            $product = Product::find($item['product_id']);
             
-            foreach ($savedOrder['stock_reservations'] as $productId => $reservation) {
-                $currentStock = $stockService->getCurrentStock($productId);
-                if ($currentStock < 0) {
-                    \Log::warning('Saved order has negative stock', [
-                        'order_name' => $orderName,
-                        'product_id' => $productId,
-                        'current_stock' => $currentStock,
-                        'reserved_quantity' => $reservation['quantity']
-                    ]);
+            if ($product && $product->isSateProduct()) {
+                $currentStock = $product->getCurrentStock();
+                
+                if ($currentStock < $item['quantity']) {
+                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. Stok tersedia: {$currentStock}");
                 }
             }
         }
         
-        // Clear current cart and load saved cart
-        $this->clearCart();
+        // Load order data to session
+        Session::put('cart', $order['items']);
+        Session::put('applied_discounts', $order['applied_discounts'] ?? []);
+        Session::put('order_type', $order['order_type'] ?? 'dine_in');
+        Session::put('partner_id', $order['partner_id'] ?? null);
+        Session::put('payment_method', $order['payment_method'] ?? 'cash');
         
-        // Restore cart dengan preserved pricing
-        Session::put('cart', $savedOrder['cart']);
-        
-        // Restore discounts if they exist
-        if (isset($savedOrder['cart_totals']['applied_discounts'])) {
-            Session::put('applied_discounts', $savedOrder['cart_totals']['applied_discounts']);
-        }
-        
-        \Log::info('Saved order loaded successfully', [
-            'order_name' => $orderName,
-            'items_count' => count($savedOrder['cart']),
-            'has_stock_reservations' => isset($savedOrder['stock_reservations']),
-            'created_at' => $savedOrder['created_at'] ?? 'unknown'
-        ]);
-        
-        return $savedOrder;
+        return $order;
     }
 
     /**
-     * Delete saved order dan return reserved stock
+     * Delete saved order dan return stock untuk sate products
      */
     public function deleteSavedOrder($orderName)
     {
-        try {
-            \DB::beginTransaction();
-            
             $savedOrders = Session::get('saved_orders', []);
             
             if (!isset($savedOrders[$orderName])) {
-                throw \App\Exceptions\BusinessException::orderNotFound($orderName);
-            }
-            
-            $savedOrder = $savedOrders[$orderName];
-            
-            // Return reserved stock if exists
-            if (isset($savedOrder['stock_reservations'])) {
-                $stockService = app(\App\Services\StockService::class);
-                
-                foreach ($savedOrder['stock_reservations'] as $productId => $reservation) {
-                    try {
-                        $stockService->logCancellationReturn(
-                            $productId,
-                            auth()->id(),
-                            $reservation['quantity'],
-                            null,
-                            "Saved order deleted - return reservation - {$orderName}"
-                        );
-                        
-                        \Log::info('Stock returned for deleted saved order', [
-                            'order_name' => $orderName,
-                            'product_id' => $productId,
-                            'returned_quantity' => $reservation['quantity']
-                        ]);
-                    } catch (\Exception $stockError) {
-                        \Log::error('Failed to return stock for deleted saved order', [
-                            'order_name' => $orderName,
-                            'product_id' => $productId,
-                            'quantity' => $reservation['quantity'],
-                            'error' => $stockError->getMessage()
-                        ]);
-                        
-                        // Don't fail the deletion, just log the error
-                    }
-                }
-            }
-            
-            // Remove from saved orders
+            throw new \Exception('Pesanan tidak ditemukan');
+        }
+
+        // No need to return stock - savedOrders tidak reserve stock
             unset($savedOrders[$orderName]);
             Session::put('saved_orders', $savedOrders);
             
-            // Update Stock Sate data for deleted saved order (return stock)
-            $stockSateService = app(StockSateService::class);
-            try {
-                if (isset($savedOrder['cart'])) {
-                    $cancelledOrderItems = [];
-                    foreach ($savedOrder['cart'] as $productId => $item) {
-                        $cancelledOrderItems[] = [
-                            'product_id' => $productId,
-                            'quantity' => $item['quantity']
-                        ];
+        return true;
                     }
                     
-                    $stockSateService->updateStockFromCancelledSavedOrder($cancelledOrderItems);
-                    
-                    \Log::info('Stock Sate updated from deleted saved order', [
-                        'order_name' => $orderName,
-                        'items_count' => count($cancelledOrderItems)
-                    ]);
-                }
-                
-            } catch (\Exception $stockSateError) {
-                // Log stock sate error but don't fail deletion
-                \Log::warning('Stock Sate update failed during saved order deletion', [
-                    'order_name' => $orderName,
-                    'error' => $stockSateError->getMessage()
-                ]);
-            }
-            
-            \DB::commit();
-            
-            \Log::info('Saved order deleted successfully', [
-                'order_name' => $orderName,
-                'had_stock_reservations' => isset($savedOrder['stock_reservations'])
-            ]);
-            
-            return $savedOrders;
-            
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            throw $e;
-        }
-    }
-
     /**
-     * Update existing saved order with current cart
+     * Update saved order with current cart - SIMPLIFIED
      */
     public function updateSavedOrder($orderName)
     {
-        try {
-            \DB::beginTransaction();
-            
-            $savedOrders = Session::get('saved_orders', []);
-            
-            if (!isset($savedOrders[$orderName])) {
-                throw new \Exception('Pesanan tersimpan tidak ditemukan.');
-            }
-            
-            $cart = Session::get('cart', []);
+        $cart = $this->getCart();
+        
             if (empty($cart)) {
-                throw new \Exception('Keranjang kosong. Tidak ada yang bisa disimpan.');
+            throw new \Exception('Keranjang kosong');
             }
             
-            $cartTotals = $this->getCartTotals();
-            $oldOrder = $savedOrders[$orderName];
-            $stockReservations = [];
-            
-            // Return stock from old order first
-            if (isset($oldOrder['stock_reservations'])) {
-                $stockService = app(\App\Services\StockService::class);
-                
-                foreach ($oldOrder['stock_reservations'] as $productId => $reservation) {
-                    try {
-                        $stockService->logCancellationReturn(
-                            $productId,
-                            auth()->id(),
-                            $reservation['quantity'],
-                            null,
-                            "Update saved order - return old reservation - {$orderName}"
-                        );
-                    } catch (\Exception $stockError) {
-                        \Log::warning('Failed to return old stock for order update', [
-                            'order_name' => $orderName,
-                            'product_id' => $productId,
-                            'error' => $stockError->getMessage()
-                        ]);
-                    }
-                }
+        $savedOrders = Session::get('saved_orders', []);
+        
+        if (!isset($savedOrders[$orderName])) {
+            throw new \Exception('Pesanan tidak ditemukan');
             }
             
-            // Reserve stock for new cart items
-            $stockService = app(\App\Services\StockService::class);
+        // Validate stock untuk sate products ONLY
+        foreach ($cart as $item) {
+            $productId = $item['product_id'];
+            $product = Product::find($productId);
             
-            foreach ($cart as $productId => $item) {
-                $product = \App\Models\Product::find($productId);
-                if (!$product) {
-                    throw new \Exception("Produk ID {$productId} tidak ditemukan.");
-                }
+            if ($product && $product->isSateProduct()) {
+                $currentStock = $product->getCurrentStock();
                 
-                // Only check stock availability for sate products
-                // Non-sate products can be reserved regardless of stock level
-                if ($product->jenis_sate && $product->quantity_effect) {
-                    // Check stock availability with package support
-                    $stockCheck = $stockService->checkStockAvailability($productId, $item['quantity']);
-                    
-                    if (!$stockCheck['available']) {
-                        throw new \Exception("Stok tidak mencukupi untuk {$product->name}");
-                    }
-                }
-                
-                try {
-                    $stockMovements = $stockService->logSale(
-                        $productId,
-                        auth()->id(),
-                        $item['quantity'],
-                        null,
-                        "Update saved order reservation - {$orderName}"
-                    );
-                    
-                    $stockReservations[$productId] = [
-                        'movements' => is_array($stockMovements) ? $stockMovements : [$stockMovements],
-                        'quantity' => $item['quantity'],
-                        'product_name' => $product->name,
-                        'reserved_at' => Carbon::now()->toISOString()
-                    ];
-                    
-                } catch (\Exception $stockError) {
-                    throw new \Exception("Gagal reserve stok untuk {$product->name}: {$stockError->getMessage()}");
+                if ($currentStock < $item['quantity']) {
+                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. Stok tersedia: {$currentStock}");
                 }
             }
-            
-            // Update saved order dengan preserved creation time
+        }
+
+        // Update saved order
+        $cartTotals = $this->getCartTotals();
+        
             $savedOrders[$orderName] = [
-                'cart' => $cart,
-                'cart_totals' => $cartTotals,
-                'created_at' => $oldOrder['created_at'], // Keep original creation time
-                'updated_at' => Carbon::now()->toISOString(), // Add update timestamp
-                'stock_reservations' => $stockReservations,
-                'user_id' => auth()->id()
+            'items' => $cart,
+            'totals' => $cartTotals,
+            'order_type' => Session::get('order_type', 'dine_in'),
+            'partner_id' => Session::get('partner_id'),
+            'payment_method' => Session::get('payment_method', 'cash'),
+            'updated_at' => now()->toISOString(),
+            'created_at' => $savedOrders[$orderName]['created_at'] ?? now()->toISOString(),
+            'applied_discounts' => Session::get('applied_discounts', [])
             ];
             
             Session::put('saved_orders', $savedOrders);
-            
-            // Clear current cart
-            $this->clearCart();
-            
-            \DB::commit();
-            
-            \Log::info('Saved order updated successfully', [
-                'order_name' => $orderName,
-                'items_count' => count($cart),
-                'old_reservations' => count($oldOrder['stock_reservations'] ?? []),
-                'new_reservations' => count($stockReservations),
-                'updated_by' => auth()->id()
-            ]);
-            
             return $savedOrders[$orderName];
-            
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            throw $e;
-        }
     }
 
     /**
@@ -787,145 +532,108 @@ class TransactionService
     }
 
     /**
-     * Complete transaction and create database records
+     * Complete transaction from cart - SIMPLIFIED for sate products
      */
     public function completeTransaction($orderType, $partnerId = null, $paymentMethod = 'cash', $notes = null)
     {
         try {
             \DB::beginTransaction();
-
-            // Validate cart first
-            $this->validateCartForCheckout();
             
             $cart = $this->getCart();
-            $cartTotals = $this->getCartTotals();
+            $appliedDiscounts = Session::get('applied_discounts', []);
             
             if (empty($cart)) {
-                throw new \Exception('Keranjang belanja kosong.');
+                throw new \Exception('Keranjang kosong');
             }
 
-            // Validate online order requirements
-            if ($orderType === 'online' && !$partnerId) {
-                throw new \Exception('Partner harus dipilih untuk pesanan online.');
-            }
+            // Calculate totals
+            $totals = $this->getCartTotals();
 
-            // Create transaction record
+            // Create transaction
             $transaction = \App\Models\Transaction::create([
                 'transaction_code' => $this->generateTransactionCode(),
-                'user_id' => auth()->id(),
+                'subtotal' => $totals['subtotal'],
+                'total_discount' => $totals['total_discount'],
+                'final_total' => $totals['final_total'],
                 'order_type' => $orderType,
                 'partner_id' => $partnerId,
-                'subtotal' => $cartTotals['subtotal'],
-                'total_discount' => $cartTotals['total_discount'],
-                'final_total' => $cartTotals['final_total'],
                 'payment_method' => $paymentMethod,
-                'status' => 'pending',
-                'discount_details' => $cartTotals['applied_discounts'],
+                'cashier_name' => auth()->user()->name ?? 'Unknown',
                 'notes' => $notes,
                 'transaction_date' => now(),
+                'status' => 'completed',
+                'user_id' => auth()->id(),
             ]);
 
-            // Calculate partner commission if online order
-            if ($orderType === 'online' && $partnerId) {
-                $partner = \App\Models\Partner::find($partnerId);
-                if ($partner) {
-                    $transaction->partner_commission = $cartTotals['subtotal'] * ($partner->commission_rate / 100);
-                    $transaction->save();
+            // Create transaction items and update StockSate untuk sate products
+            $stockSateService = app(StockSateService::class);
+            
+            foreach ($cart as $item) {
+                $product = Product::find($item['product_id']);
+                $appropriatePrice = $product->getAppropriatePrice($orderType, $partnerId);
+                
+                \App\Models\TransactionItem::create([
+                    'transaction_id' => $transaction->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['name'],
+                    'product_price' => $appropriatePrice,
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $appropriatePrice * $item['quantity'],
+                    'discount_amount' => 0, // Default no discount per item
+                    'total' => $appropriatePrice * $item['quantity'],
+                ]);
+
+                // Update StockSate HANYA untuk sate products
+                if ($product && $product->isSateProduct()) {
+                    $stockSateService->updateStockFromSale(
+                        $product->jenis_sate,
+                        $item['quantity'] * $product->quantity_effect,
+                        now()->format('Y-m-d')
+                    );
                 }
             }
 
-            // Create transaction items
-            foreach ($cart as $productId => $item) {
-                $product = \App\Models\Product::find($productId);
-                if (!$product) {
-                    throw new \Exception("Produk '{$item['name']}' tidak ditemukan.");
-                }
-
-                // Calculate item discount if any
-                $itemDiscountAmount = 0;
-                foreach ($cartTotals['applied_discounts'] as $discountData) {
-                    if ($discountData['type'] === 'product' && $discountData['product_id'] == $productId) {
-                        $itemTotal = $item['price'] * $item['quantity'];
-                        if ($discountData['value_type'] === 'percentage') {
-                            $itemDiscountAmount = $itemTotal * ($discountData['value'] / 100);
-                        } else {
-                            $itemDiscountAmount = $discountData['value'];
-                        }
-                        break;
+            // Create discount records
+            foreach ($appliedDiscounts as $discountId => $discountData) {
+                // Calculate actual discount amount based on type and value
+                $discountAmount = 0;
+                if ($discountData['type'] === 'product' && isset($cart[$discountData['product_id']])) {
+                    $item = $cart[$discountData['product_id']];
+                    $itemTotal = $item['price'] * $item['quantity'];
+                    
+                    if ($discountData['value_type'] === 'percentage') {
+                        $discountAmount = $itemTotal * ($discountData['value'] / 100);
+                    } else {
+                        $discountAmount = $discountData['value'];
+                    }
+                } elseif ($discountData['type'] === 'transaction') {
+                    $effectiveSubtotal = $totals['subtotal'] - ($totals['product_discount'] ?? 0);
+                    
+                    if ($discountData['value_type'] === 'percentage') {
+                        $discountAmount = $effectiveSubtotal * ($discountData['value'] / 100);
+                    } else {
+                        $discountAmount = $discountData['value'];
                     }
                 }
-
-                $subtotal = $item['price'] * $item['quantity'];
-                $total = $subtotal - $itemDiscountAmount;
-
-                $transactionItem = $transaction->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_price' => $product->price,
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $subtotal,
-                    'discount_amount' => $itemDiscountAmount,
-                    'total' => $total,
-                ]);
-
-                // Reduce stock using new StockService with package support dan transaction reference
-                $stockService = app(\App\Services\StockService::class);
-                try {
-                    $stockService->logSale(
-                        $product->id,
-                        auth()->id(),
-                        $item['quantity'],
-                        $transaction->id,
-                        "Sale - {$transaction->transaction_code}"
-                    );
-                } catch (\Exception $stockError) {
-                    // Log stock reduction error but don't fail transaction
-                    // Big Pappa requirement: Transaction should be independent from stock management
-                    \Log::warning('Stock reduction failed during transaction', [
-                        'transaction_id' => $transaction->id,
-                        'product_id' => $product->id,
-                        'quantity' => $item['quantity'],
-                        'error' => $stockError->getMessage()
-                    ]);
-                }
-            }
-
-            // Mark transaction as completed
-            $transaction->markAsCompleted();
-
-            // Update Stock Sate data automatically
-            $stockSateService = app(StockSateService::class);
-            try {
-                $transactionItems = [];
-                foreach ($cart as $productId => $item) {
-                    $transactionItems[] = [
-                        'product_id' => $productId,
-                        'quantity' => $item['quantity']
-                    ];
-                }
                 
-                $stockSateService->updateStockFromTransaction($transactionItems);
-                
-                \Log::info('Stock Sate updated from transaction completion', [
+                \App\Models\TransactionDiscount::create([
                     'transaction_id' => $transaction->id,
-                    'transaction_code' => $transaction->transaction_code,
-                    'items_count' => count($transactionItems)
-                ]);
-                
-            } catch (\Exception $stockSateError) {
-                // Log stock sate error but don't fail transaction
-                \Log::warning('Stock Sate update failed during transaction', [
-                    'transaction_id' => $transaction->id,
-                    'error' => $stockSateError->getMessage()
+                    'discount_id' => is_numeric($discountId) ? $discountId : null,
+                    'discount_name' => $discountData['name'],
+                    'discount_type' => $discountData['type'],
+                    'discount_value' => $discountData['value'],
+                    'discount_value_type' => $discountData['value_type'],
+                    'discount_amount' => $discountAmount,
+                    'product_id' => $discountData['product_id'] ?? null,
                 ]);
             }
 
-            // Clear cart and session data
+            // Clear cart and applied discounts
             $this->clearCart();
 
             \DB::commit();
 
-            return $transaction;
+            return $transaction->load(['items', 'discounts']);
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -934,168 +642,124 @@ class TransactionService
     }
 
     /**
-     * Complete backdated transaction with custom date (Admin only)
+     * Complete backdated transaction - SIMPLIFIED for sate products
      */
     public function completeBackdatedTransaction($orderType, $customDate, $partnerId = null, $paymentMethod = 'cash', $notes = null)
     {
         try {
             \DB::beginTransaction();
-
-            // Validate cart first
-            $this->validateCartForCheckout();
             
             $cart = $this->getCart();
-            $cartTotals = $this->getCartTotals();
+            $appliedDiscounts = Session::get('applied_discounts', []);
             
             if (empty($cart)) {
-                throw new \Exception('Keranjang belanja kosong.');
+                throw new \Exception('Keranjang kosong');
             }
 
-            // Validate admin user
-            if (!auth()->user() || !auth()->user()->hasRole('admin')) {
-                throw new \Exception('Hanya admin yang dapat melakukan backdating penjualan.');
+            // Validate date range
+            $targetDate = Carbon::parse($customDate);
+            if ($targetDate->isAfter(now())) {
+                throw new \Exception('Tanggal tidak boleh di masa depan');
             }
 
-            // Validate custom date
-            $backdateTimestamp = Carbon::parse($customDate);
-            if ($backdateTimestamp->isFuture()) {
-                throw new \Exception('Tanggal backdating tidak boleh di masa depan.');
+            if ($targetDate->isBefore(now()->subDays(30))) {
+                throw new \Exception('Transaksi backdate maksimal 30 hari');
             }
 
-            // Validate online order requirements
-            if ($orderType === 'online' && !$partnerId) {
-                throw new \Exception('Partner harus dipilih untuk pesanan online.');
-            }
+            // Calculate totals
+            $totals = $this->getCartTotals();
 
-            // Create transaction record with custom date
+            // Create transaction dengan custom date
             $transaction = \App\Models\Transaction::create([
                 'transaction_code' => $this->generateTransactionCode(),
-                'user_id' => auth()->id(),
+                'subtotal' => $totals['subtotal'],
+                'total_discount' => $totals['total_discount'],
+                'final_total' => $totals['final_total'],
                 'order_type' => $orderType,
                 'partner_id' => $partnerId,
-                'subtotal' => $cartTotals['subtotal'],
-                'total_discount' => $cartTotals['total_discount'],
-                'final_total' => $cartTotals['final_total'],
                 'payment_method' => $paymentMethod,
-                'status' => 'pending',
-                'discount_details' => $cartTotals['applied_discounts'],
+                'cashier_name' => auth()->user()->name ?? 'Unknown',
                 'notes' => $notes,
-                'transaction_date' => $backdateTimestamp,
-                'is_backdated' => true,
-                'created_by_admin_id' => auth()->id(),
-                'created_at' => $backdateTimestamp,
-                'updated_at' => $backdateTimestamp,
+                'transaction_date' => $targetDate,
+                'status' => 'completed',
+                'user_id' => auth()->id(),
+                'created_at' => $targetDate,
+                'updated_at' => now(),
             ]);
 
-            // Calculate partner commission if online order
-            if ($orderType === 'online' && $partnerId) {
-                $partner = \App\Models\Partner::find($partnerId);
-                if ($partner) {
-                    $transaction->partner_commission = $cartTotals['subtotal'] * ($partner->commission_rate / 100);
-                    $transaction->save();
-                }
-            }
-
-            // Create transaction items
-            foreach ($cart as $productId => $item) {
-                $product = \App\Models\Product::find($productId);
-                if (!$product) {
-                    throw new \Exception("Produk '{$item['name']}' tidak ditemukan.");
-                }
-
-                // Calculate item discount if any
-                $itemDiscountAmount = 0;
-                foreach ($cartTotals['applied_discounts'] as $discountData) {
-                    if ($discountData['type'] === 'product' && $discountData['product_id'] == $productId) {
-                        $itemTotal = $item['price'] * $item['quantity'];
-                        if ($discountData['value_type'] === 'percentage') {
-                            $itemDiscountAmount = $itemTotal * ($discountData['value'] / 100);
-                        } else {
-                            $itemDiscountAmount = $discountData['value'];
-                        }
-                        break;
-                    }
-                }
-
-                $subtotal = $item['price'] * $item['quantity'];
-                $total = $subtotal - $itemDiscountAmount;
-
-                $transactionItem = $transaction->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_price' => $product->price,
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $subtotal,
-                    'discount_amount' => $itemDiscountAmount,
-                    'total' => $total,
-                    'created_at' => $backdateTimestamp,
-                    'updated_at' => $backdateTimestamp,
-                ]);
-
-                // Reduce stock using new StockService with package support dan transaction reference
-                $stockService = app(\App\Services\StockService::class);
-                try {
-                    $stockService->logSale(
-                        $product->id,
-                        auth()->id(),
-                        $item['quantity'],
-                        $transaction->id,
-                        "Backdated Sale - {$transaction->transaction_code}",
-                        $backdateTimestamp // Pass custom timestamp to stock log
-                    );
-                } catch (\Exception $stockError) {
-                    // Log stock reduction error but don't fail transaction
-                    \Log::warning('Stock reduction failed during backdated transaction', [
-                        'transaction_id' => $transaction->id,
-                        'product_id' => $product->id,
-                        'quantity' => $item['quantity'],
-                        'custom_date' => $customDate,
-                        'error' => $stockError->getMessage()
-                    ]);
-                }
-            }
-
-            // Mark transaction as completed with custom timestamp
-            $transaction->status = 'completed';
-            $transaction->completed_at = $backdateTimestamp;
-            $transaction->save();
-
-            // Update Stock Sate data automatically (with special handling for backdated)
+            // Create transaction items and update StockSate untuk sate products
             $stockSateService = app(StockSateService::class);
-            try {
-                $transactionItems = [];
-                foreach ($cart as $productId => $item) {
-                    $transactionItems[] = [
-                        'product_id' => $productId,
-                        'quantity' => $item['quantity']
-                    ];
+            
+            foreach ($cart as $item) {
+                $product = Product::find($item['product_id']);
+                $appropriatePrice = $product->getAppropriatePrice($orderType, $partnerId);
+                
+                \App\Models\TransactionItem::create([
+                    'transaction_id' => $transaction->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['name'],
+                    'product_price' => $appropriatePrice,
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $appropriatePrice * $item['quantity'],
+                    'discount_amount' => 0, // Default no discount per item
+                    'total' => $appropriatePrice * $item['quantity'],
+                    'created_at' => $targetDate,
+                    'updated_at' => now(),
+                ]);
+
+                // Update StockSate HANYA untuk sate products dengan target date
+                if ($product && $product->isSateProduct()) {
+                    $stockSateService->updateStockFromSale(
+                        $product->jenis_sate,
+                        $item['quantity'] * $product->quantity_effect,
+                        $targetDate->format('Y-m-d')
+                    );
+                }
+            }
+
+            // Create discount records
+            foreach ($appliedDiscounts as $discountId => $discountData) {
+                // Calculate actual discount amount based on type and value
+                $discountAmount = 0;
+                if ($discountData['type'] === 'product' && isset($cart[$discountData['product_id']])) {
+                    $item = $cart[$discountData['product_id']];
+                    $itemTotal = $item['price'] * $item['quantity'];
+                    
+                    if ($discountData['value_type'] === 'percentage') {
+                        $discountAmount = $itemTotal * ($discountData['value'] / 100);
+                    } else {
+                        $discountAmount = $discountData['value'];
+                    }
+                } elseif ($discountData['type'] === 'transaction') {
+                    $effectiveSubtotal = $totals['subtotal'] - ($totals['product_discount'] ?? 0);
+                    
+                    if ($discountData['value_type'] === 'percentage') {
+                        $discountAmount = $effectiveSubtotal * ($discountData['value'] / 100);
+                    } else {
+                        $discountAmount = $discountData['value'];
+                }
                 }
                 
-                $stockSateService->updateStockFromTransaction($transactionItems);
-                
-                \Log::info('Stock Sate updated from backdated transaction completion', [
+                \App\Models\TransactionDiscount::create([
                     'transaction_id' => $transaction->id,
-                    'transaction_code' => $transaction->transaction_code,
-                    'backdated_to' => $customDate,
-                    'items_count' => count($transactionItems),
-                    'admin_id' => auth()->id()
-                ]);
-                
-            } catch (\Exception $stockSateError) {
-                // Log stock sate error but don't fail transaction
-                \Log::warning('Stock Sate update failed during backdated transaction', [
-                    'transaction_id' => $transaction->id,
-                    'custom_date' => $customDate,
-                    'error' => $stockSateError->getMessage()
+                    'discount_id' => is_numeric($discountId) ? $discountId : null,
+                    'discount_name' => $discountData['name'],
+                    'discount_type' => $discountData['type'],
+                    'discount_value' => $discountData['value'],
+                    'discount_value_type' => $discountData['value_type'],
+                    'discount_amount' => $discountAmount,
+                    'product_id' => $discountData['product_id'] ?? null,
+                    'created_at' => $targetDate,
+                    'updated_at' => now(),
                 ]);
             }
 
-            // Clear cart and session data
+            // Clear cart and applied discounts
             $this->clearCart();
 
             \DB::commit();
 
-            return $transaction;
+            return $transaction->load(['items', 'discounts']);
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -1152,7 +816,7 @@ class TransactionService
     }
 
     /**
-     * Cancel transaction (if still pending)
+     * Cancel transaction dan return stock untuk sate products
      */
     public function cancelTransaction($transactionId, $reason = null)
     {
@@ -1161,36 +825,31 @@ class TransactionService
 
             $transaction = \App\Models\Transaction::findOrFail($transactionId);
             
-            if ($transaction->status !== 'pending') {
-                throw new \Exception('Hanya transaksi pending yang dapat dibatalkan.');
+            if ($transaction->status === 'cancelled') {
+                throw new \Exception('Transaksi sudah dibatalkan');
             }
 
-            // Restore stock for each item menggunakan new system
-            $stockService = app(\App\Services\StockService::class);
+            // Update transaction status
+            $transaction->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancelled_by' => auth()->id(),
+                'cancellation_reason' => $reason
+            ]);
+
+            // Return stock HANYA untuk sate products
+            $stockSateService = app(StockSateService::class);
+            
             foreach ($transaction->items as $item) {
-                try {
-                    $stockService->logCancellationReturn(
-                        $item->product_id,
-                        auth()->id(),
-                        $item->quantity,
-                        $transaction->id,
-                        "Cancellation return - {$transaction->transaction_code}" . ($reason ? " - {$reason}" : "")
+                $product = Product::find($item->product_id);
+                
+                if ($product && $product->isSateProduct()) {
+                    $stockSateService->updateStockFromCancellation(
+                        $product->jenis_sate,
+                        $item->quantity * $product->quantity_effect,
+                        $transaction->transaction_date->format('Y-m-d')
                     );
-                } catch (\Exception $stockError) {
-                    // Log error but don't fail cancellation
-                    \Log::warning('Stock return failed during cancellation', [
-                        'transaction_id' => $transaction->id,
-                        'product_id' => $item->product_id,
-                        'quantity' => $item->quantity,
-                        'error' => $stockError->getMessage()
-                    ]);
                 }
-            }
-
-            // Mark transaction as cancelled
-            $transaction->markAsCancelled();
-            if ($reason) {
-                $transaction->update(['notes' => ($transaction->notes ? $transaction->notes . ' | ' : '') . 'Dibatalkan: ' . $reason]);
             }
 
             \DB::commit();

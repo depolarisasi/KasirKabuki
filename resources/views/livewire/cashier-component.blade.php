@@ -71,8 +71,7 @@
                                     </h3>
 
                                     <div class="text-center">
-                                        <div class="badge badge-outline badge-xs mb-2">{{ $product->category->name ?? 'N/A' }}
-                                        </div>
+                                        {{ $product->category->name ?? 'N/A' }} 
                                         @php
                                             $basePrice = $product->getAppropriatePrice($orderType, $selectedPartner);
                                             $discountedPrice = $product->getDiscountedPrice(
@@ -298,7 +297,7 @@
                                                 -Rp {{ number_format($discount['value'], 0, ',', '.') }}
                                             @endif
                                         </span>
-                                        <button wire:click="removeDiscount({{ $discountId }})"
+                                        <button wire:click="removeDiscount('{{ $discountId }}')"
                                             class="btn btn-xs btn-circle btn-ghost ml-2">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
@@ -318,7 +317,7 @@
                             <span class="label-text font-semibold">Tambah Diskon</span>
                         </label>
                         <div class="flex gap-2">
-                            <select wire:model="selectedDiscount" class="select select-bordered flex-1">
+                            <select wire:model.live="selectedDiscount" class="select select-bordered flex-1">
                                 <option value="">Pilih Diskon</option>
                                 @foreach ($availableDiscounts as $discount)
                                     <option value="{{ $discount->id }}">
@@ -446,9 +445,9 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm font-bold">Rp
-                                            {{ number_format($order['cart_totals']['final_total'] ?? 0, 0, ',', '.') }}
+                                            {{ number_format($order['totals']['final_total'] ?? 0, 0, ',', '.') }}
                                         </p>
-                                        <p class="text-xs text-base-content/60">{{ count($order['cart']) }} item</p>
+                                        <p class="text-xs text-base-content/60">{{ count($order['items'] ?? []) }} item</p>
                                     </div>
                                 </div>
 

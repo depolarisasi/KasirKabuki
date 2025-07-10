@@ -382,4 +382,111 @@ class BackdatingSalesComponent extends Component
     {
         return $this->transactionService->getCartTotals()['final_total'];
     }
+
+    /**
+     * Add selected discount to cart
+     */
+    public function addDiscount()
+    {
+        try {
+            if (!$this->selectedDiscount) {
+                LivewireAlert::title('Error!')
+                    ->text('Pilih diskon terlebih dahulu.')
+                    ->error()
+                    ->show();
+                return;
+            }
+
+            $this->transactionService->applyDiscount($this->selectedDiscount, $this->orderType);
+            
+            // Reset selection
+            $this->selectedDiscount = null;
+            
+            LivewireAlert::title('Berhasil!')
+                ->text('Diskon berhasil diterapkan.')
+                ->success()
+                ->show();
+                
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
+
+    /**
+     * Apply ad-hoc discount (percentage or nominal)
+     */
+    public function applyAdhocDiscount()
+    {
+        try {
+            // Validate input
+            if (!$this->adhocDiscountPercentage && !$this->adhocDiscountAmount) {
+                LivewireAlert::title('Error!')
+                    ->text('Masukkan nilai diskon (persentase atau nominal).')
+                    ->error()
+                    ->show();
+                return;
+            }
+
+            if ($this->adhocDiscountPercentage && $this->adhocDiscountAmount) {
+                LivewireAlert::title('Error!')
+                    ->text('Pilih salah satu: diskon persentase atau nominal.')
+                    ->error()
+                    ->show();
+                return;
+            }
+
+            // Apply percentage discount
+            if ($this->adhocDiscountPercentage) {
+                $this->transactionService->applyAdhocDiscount('percentage', $this->adhocDiscountPercentage, $this->orderType);
+                $discountType = $this->adhocDiscountPercentage . '%';
+            } 
+            // Apply nominal discount
+            else {
+                $this->transactionService->applyAdhocDiscount('nominal', $this->adhocDiscountAmount, $this->orderType);
+                $discountType = 'Rp ' . number_format($this->adhocDiscountAmount, 0, ',', '.');
+            }
+
+            // Reset inputs
+            $this->adhocDiscountPercentage = 0;
+            $this->adhocDiscountAmount = 0;
+            
+            LivewireAlert::title('Berhasil!')
+                ->text("Diskon cepat {$discountType} berhasil diterapkan.")
+                ->success()
+                ->show();
+                
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menerapkan diskon cepat.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
+
+    /**
+     * Remove discount from cart
+     */
+    public function removeDiscount($discountId)
+    {
+        try {
+            $this->transactionService->removeDiscount($discountId);
+            
+            LivewireAlert::title('Berhasil!')
+                ->text('Diskon berhasil dihapus.')
+                ->success()
+                ->show();
+                
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage() ?: 'Terjadi kesalahan saat menghapus diskon.';
+            LivewireAlert::title('Terjadi kesalahan!')
+                ->text($errorMessage)
+                ->error()
+                ->show();
+        }
+    }
 } 

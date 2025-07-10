@@ -235,6 +235,113 @@
                             @endforeach
                         </div>
 
+                        {{-- Applied Discounts --}}
+                        @if (!empty($cartData['applied_discounts']))
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-sm mb-2">Diskon Diterapkan</h4>
+                                @foreach ($cartData['applied_discounts'] as $discountId => $discount)
+                                    <div class="flex justify-between items-center p-2 bg-warning/10 rounded-lg mb-2">
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium">{{ $discount['name'] }}</span>
+                                            <span class="text-xs text-base-content/60 block">
+                                                @if ($discount['type'] === 'product')
+                                                    Produk: {{ $discount['product_name'] ?? 'N/A' }}
+                                                @else
+                                                    Diskon Total
+                                                @endif
+                                            </span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="text-sm font-bold text-warning">
+                                                @if ($discount['value_type'] === 'percentage')
+                                                    -{{ $discount['value'] }}%
+                                                @else
+                                                    -Rp {{ number_format($discount['value'], 0, ',', '.') }}
+                                                @endif
+                                            </span>
+                                            <button wire:click="removeDiscount('{{ $discountId }}')"
+                                                class="btn btn-xs btn-circle btn-ghost ml-2">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        {{-- Quick Discount Addition --}}
+                        <div class="form-control mb-4">
+                            <label class="label">
+                                <span class="label-text font-semibold">Tambah Diskon</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <select wire:model.live="selectedDiscount" class="select select-bordered flex-1">
+                                    <option value="">Pilih Diskon</option>
+                                    @foreach ($availableDiscounts as $discount)
+                                        <option value="{{ $discount->id }}">
+                                            {{ $discount->name }}
+                                            (@if ($discount->value_type === 'percentage')
+                                                {{ $discount->value }}%
+                                            @else
+                                                Rp {{ number_format($discount->value, 0, ',', '.') }}
+                                            @endif)
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button wire:click="addDiscount" class="btn btn-outline btn-sm"
+                                    @if (!$selectedDiscount) disabled @endif>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Ad-hoc Discount --}}
+                        @if ($orderType !== 'online')
+                            <div class="form-control mb-4">
+                                <label class="label">
+                                    <span class="label-text font-semibold">Diskon Cepat</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text text-xs">Diskon %</span>
+                                        </label>
+                                        <input wire:model.live="adhocDiscountPercentage" type="number" step="0.1"
+                                            min="0" max="100" placeholder="0"
+                                            class="input input-bordered input-sm" />
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text text-xs">Diskon Rp</span>
+                                        </label>
+                                        <input wire:model.live="adhocDiscountAmount" type="number" step="1000"
+                                            min="0" placeholder="0" class="input input-bordered input-sm" />
+                                    </div>
+                                </div>
+                                <button wire:click="applyAdhocDiscount" class="btn btn-warning btn-sm w-full"
+                                    @if ((!$adhocDiscountPercentage && !$adhocDiscountAmount) || ($adhocDiscountPercentage && $adhocDiscountAmount)) disabled @endif>
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                                        </path>
+                                    </svg>
+                                    Terapkan Diskon Cepat
+                                </button>
+                                @if ($adhocDiscountPercentage && $adhocDiscountAmount)
+                                    <div class="text-xs text-error mt-1">
+                                        Pilih salah satu: diskon % atau diskon nominal
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
                         {{-- Cart Totals --}}
                         <div class="divider my-4"></div>
                         <div class="space-y-2">

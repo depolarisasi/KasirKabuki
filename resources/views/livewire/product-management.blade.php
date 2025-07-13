@@ -373,7 +373,7 @@
                                     @foreach($partners as $partner)
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center p-3 bg-base-100 rounded-lg">
                                             <div class="flex items-center gap-3">
-                                                <input wire:model="partnerPrices.{{ $partner->id }}.is_active" 
+                                                <input wire:model.live="partnerPrices.{{ $partner->id }}.is_active" 
                                                        type="checkbox" 
                                                        class="checkbox checkbox-primary checkbox-sm" />
                                                 <span class="font-medium">{{ $partner->name }}</span>
@@ -382,18 +382,18 @@
                                             <div class="form-control">
                                                 <div class="relative">
                                                     <span class="absolute left-3 top-3 text-base-content/70 text-sm">Rp</span>
-                                                    <input wire:model="partnerPrices.{{ $partner->id }}.price" 
+                                                    <input wire:model.live="partnerPrices.{{ $partner->id }}.price" 
                                                            type="number" 
                                                            step="100" 
                                                            min="0"
                                                            placeholder="0"
-                                                           class="input input-bordered input-sm w-full pl-10"
+                                                           class="input input-bordered input-sm w-full pl-10 @if(!($partnerPrices[$partner->id]['is_active'] ?? false)) opacity-50 @endif"
                                                            @if(!($partnerPrices[$partner->id]['is_active'] ?? false)) disabled @endif />
                                                 </div>
                                             </div>
                                             
                                             <div class="text-right">
-                                                @if(!empty($partnerPrices[$partner->id]['price']) && ($partnerPrices[$partner->id]['is_active'] ?? false))
+                                                @if(($partnerPrices[$partner->id]['is_active'] ?? false) && !empty($partnerPrices[$partner->id]['price']))
                                                     @php $saving = $price - $partnerPrices[$partner->id]['price']; @endphp
                                                     @if($saving > 0)
                                                         <span class="text-success text-sm">

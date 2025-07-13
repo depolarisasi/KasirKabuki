@@ -358,6 +358,24 @@ class ProductManagement extends Component
     }
 
     /**
+     * Handle perubahan checkbox partner specific
+     */
+    public function updatedPartnerPrices($value, $key)
+    {
+        // Parse key to get partner ID and field
+        $keyParts = explode('.', $key);
+        if (count($keyParts) >= 2) {
+            $partnerId = $keyParts[0];
+            $field = $keyParts[1];
+            
+            // If is_active checkbox is unchecked, clear the price
+            if ($field === 'is_active' && !$value) {
+                $this->partnerPrices[$partnerId]['price'] = '';
+            }
+        }
+    }
+
+    /**
      * Get jenis sate options untuk dropdown
      */
     public function getJenisSateOptions()

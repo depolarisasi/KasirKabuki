@@ -1,46 +1,44 @@
 # Active Context
 
 ## Current Focus
-- **Fixed Syntax Error dengan Livewire-Only**: Resolved unclosed parenthesis error by removing Alpine.js complexity
-- **Simplified Partner Pricing Form**: Used pure Livewire approach untuk better stability
-- **Enhanced Form Reliability**: Eliminated JavaScript syntax issues dengan server-side rendering
+- **Fixed Icon Path References**: Updated all remaining references from `/icons/` to `/assets/` for PWA icon consistency
+- **PWA Icon Standardization**: All icon paths now correctly point to `/assets/` directory structure
+- **Service Worker Optimization**: Fixed push notification icon paths untuk proper PWA functionality
 
 ## Recent Changes
-- **Removed Alpine.js Complexity**: Eliminated all x-data, x-model, x-show Alpine.js directives
-- **Pure Livewire Implementation**: Used wire:model.live for all form interactions
-- **Simplified Conditional Logic**: Replaced Alpine.js conditions dengan Blade @if directives
-- **Server-Side Rendering**: All form state management handled by Livewire backend
-- **Fixed Disabled State**: Used Blade conditional @if untuk input disabled attribute
+- **Fixed Service Worker Icons**: Updated `public/sw.js` push notification icon paths from `/icons/` to `/assets/`
+- **Fixed Layout Icon References**: Updated `resources/views/components/layouts/app.blade.php` PWA icon paths
+- **Standardized Icon Structure**: All icons now consistently use `/assets/` directory path
+- **PWA Compatibility**: Ensured icon references work correctly untuk web app installation
 
 ## Technical Implementation
-- **Livewire Toggle**: `wire:model.live="enablePartnerPricing"` untuk main toggle
-- **Checkbox Binding**: `wire:model.live="partnerPrices.{{ $partner->id }}.is_active"` untuk partner selection
-- **Price Input**: `wire:model.live="partnerPrices.{{ $partner->id }}.price"` untuk price input
-- **Conditional Disabled**: `@if(!($partnerPrices[$partner->id]['is_active'] ?? false)) disabled @endif`
-- **Visual Feedback**: Blade conditional classes untuk opacity dan styling
+- **Service Worker**: Updated push notification icons to use `/assets/icon-192x192.png`
+- **Layout Headers**: Fixed PWA manifest icon references to use proper asset paths
+- **File Structure**: Icons located at `/assets/icon-192x192.png` and `/assets/icon-512x512.png`
+- **Consistency**: All references now point to same directory structure
 
 ## Masalah yang Diselesaikan
-- ✅ **Syntax Error**: Eliminated "Unclosed '(' does not match '}'" error
-- ✅ **JavaScript Conflicts**: Removed problematic Alpine.js expressions
-- ✅ **Form Reactivity**: Maintained form functionality dengan pure Livewire
-- ✅ **Input State**: Partner price inputs properly enabled/disabled based on checkbox
-- ✅ **Data Binding**: All form data correctly synced dengan Livewire component
+- ✅ **Inconsistent Icon Paths**: All `/icons/` references changed to `/assets/`
+- ✅ **Service Worker Icons**: Push notifications now use correct icon paths
+- ✅ **PWA Installation**: Web app icons properly referenced untuk mobile installation
+- ✅ **Asset Loading**: No more 404 errors untuk missing icon files
+- ✅ **Directory Structure**: Consistent asset organization throughout application
 
 ## Current Architecture
-- **Frontend**: Pure Blade templates dengan Livewire directives
-- **Backend**: PHP Livewire component handles all state management
-- **Data Flow**: Server-side rendering dengan wire:model.live for real-time updates
-- **Validation**: Server-side validation dalam Livewire component
-- **Performance**: Optimized dengan minimal JavaScript overhead
+- **Icon Assets**: All located in `/public/assets/` directory
+- **PWA Icons**: 192x192 and 512x512 PNG files untuk web app installation
+- **Logo Assets**: `logo-150x75.png` untuk application branding
+- **Service Worker**: Proper icon references untuk push notifications
+- **Layout Headers**: PWA-compliant meta tags dan icon references
 
 ## Prioritas Saat Ini
-- Test partner pricing form functionality
-- Verify form submission works correctly
-- Ensure partner price data saves properly
-- Monitor for any remaining issues
+- Test PWA installation functionality
+- Verify push notification icon display
+- Monitor untuk any remaining asset loading issues
+- Ensure all icon references work correctly
 
 ## Next Steps
-- Test complete partner pricing workflow
-- Verify database persistence of partner prices
-- Test form behavior dengan different partner combinations
-- Ensure backward compatibility dengan existing partner data 
+- Test complete PWA installation workflow
+- Verify service worker functionality dengan proper icons
+- Check push notification display dengan correct icons
+- Monitor console untuk any remaining asset errors 

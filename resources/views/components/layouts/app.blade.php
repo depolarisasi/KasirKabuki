@@ -26,8 +26,8 @@
         <link rel="manifest" href="{{ asset('manifest.json') }}">
         
         <!-- PWA Icons -->
-        <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('icons/icon-192x192.png') }}">
-        <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('icons/icon-192x192.png') }}">
+        <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('assets/icon-192x192.png') }}">
+        <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('assets/icon-192x192.png') }}">
 
         <!-- Fonts -->
         <!-- Using system fonts for better performance -->

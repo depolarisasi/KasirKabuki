@@ -87,7 +87,7 @@ class CashierComponent extends Component
         $categories = Category::orderBy('name')->get();
         
         // Get cart totals and items
-        $cartData = $this->transactionService->getCartTotals();
+        $cartData = $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner);
         
         // Get available discounts with eager loading
         $availableDiscounts = $this->transactionService->getAvailableDiscounts($this->orderType);
@@ -213,7 +213,7 @@ class CashierComponent extends Component
         
         // Clear applied discounts if switching to online
         if ($this->orderType === 'online') {
-            $appliedDiscounts = $this->transactionService->getCartTotals()['applied_discounts'];
+            $appliedDiscounts = $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner)['applied_discounts'];
             foreach ($appliedDiscounts as $discountId => $discountData) {
                 $this->transactionService->removeDiscount($discountId);
             }
@@ -225,7 +225,7 @@ class CashierComponent extends Component
             }
         } else {
             // Remove discounts when switching away from online
-            $appliedDiscounts = $this->transactionService->getCartTotals()['applied_discounts'];
+            $appliedDiscounts = $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner)['applied_discounts'];
             foreach ($appliedDiscounts as $discountId => $discountData) {
                 $this->transactionService->removeDiscount($discountId);
             }
@@ -269,7 +269,7 @@ class CashierComponent extends Component
                 $partner = Partner::find($this->selectedPartner);
                 
                 LivewireAlert::title('Partner Dipilih')
-                ->text("Harga partner untuk {$partner->name} telah diterapkan ke keranjang.")
+                ->text("Harga partner untuk {$partner->name} telah diterapkan ke keranjang. Pajak dan biaya layanan tidak dikenakan karena sudah termasuk dalam harga partner.")
                 ->info()
                 ->show();
             }
@@ -300,6 +300,10 @@ class CashierComponent extends Component
     public function applyDiscount($discountId)
     {
         try {
+            \Log::info('CashierComponent: Applying discount', ['discount_id' => $discountId]);
+
+            $appliedDiscounts = $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner)['applied_discounts'];
+
             $this->transactionService->applyDiscount($discountId, $this->orderType);
             LivewireAlert::title('Berhasil!')
             ->text('Diskon berhasil diterapkan.')
@@ -344,6 +348,10 @@ class CashierComponent extends Component
     public function removeDiscount($discountId)
     {
         try {
+            \Log::info('CashierComponent: Removing discount', ['discount_id' => $discountId]);
+
+            $appliedDiscounts = $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner)['applied_discounts'];
+
             $this->transactionService->removeDiscount($discountId);
             LivewireAlert::title('Berhasil!')
             ->text('Diskon dihapus.')
@@ -778,6 +786,6 @@ class CashierComponent extends Component
 
     public function getCartTotalProperty()
     {
-        return $this->transactionService->getCartTotals()['final_total'];
+        return $this->transactionService->getCartTotals($this->orderType, $this->selectedPartner)['final_total'];
     }
 }

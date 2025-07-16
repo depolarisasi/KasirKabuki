@@ -118,10 +118,9 @@ class TransactionService
     }
 
     /**
-     * Get cart totals with calculations
-     * Order: Subtotal → Discount → Tax → Service Charge → Final Total
+     * Get cart totals with conditional tax/service charge for partner orders
      */
-    public function getCartTotals()
+    public function getCartTotals($orderType = 'dine_in', $partnerId = null)
     {
         $cart = $this->getCart();
         $appliedDiscounts = Session::get('applied_discounts', []);
@@ -167,12 +166,15 @@ class TransactionService
         $totalDiscount = $productDiscountAmount + $transactionDiscountAmount;
         $afterDiscount = $subtotal - $totalDiscount;
         
-        // Calculate tax (applied after discount)
-        $taxAmount = $storeSettings->calculateTaxAmount($afterDiscount);
+        // Check if this is an online order with partner (no tax/service charge)
+        $isPartnerOrder = ($orderType === 'online' && $partnerId !== null);
+        
+        // Calculate tax (applied after discount) - Skip for partner orders
+        $taxAmount = $isPartnerOrder ? 0 : $storeSettings->calculateTaxAmount($afterDiscount);
         $subtotalWithTax = $afterDiscount + $taxAmount;
         
-        // Calculate service charge (applied after tax)
-        $serviceChargeAmount = $storeSettings->calculateServiceChargeAmount($subtotalWithTax);
+        // Calculate service charge (applied after tax) - Skip for partner orders
+        $serviceChargeAmount = $isPartnerOrder ? 0 : $storeSettings->calculateServiceChargeAmount($subtotalWithTax);
         
         // Final total includes tax and service charge
         $finalTotal = $subtotalWithTax + $serviceChargeAmount;
@@ -191,7 +193,8 @@ class TransactionService
             'service_charge_rate' => $storeSettings->service_charge_rate,
             'final_total' => round(max(0, $finalTotal), 2), // Ensure total can't be negative
             'cart_items' => $cart,
-            'applied_discounts' => $appliedDiscounts
+            'applied_discounts' => $appliedDiscounts,
+            'is_partner_order' => $isPartnerOrder // Add flag for UI purposes
         ];
     }
 
@@ -510,7 +513,7 @@ class TransactionService
     }
 
     /**
-     * Complete transaction from cart
+     * Complete transaction and save to database with conditional tax/service charge
      */
     public function completeTransaction($orderType, $partnerId = null, $paymentMethod = 'cash', $notes = null)
     {
@@ -524,17 +527,17 @@ class TransactionService
                 throw new \Exception('Keranjang kosong');
             }
 
-            // Calculate totals
-            $totals = $this->getCartTotals();
+            // Calculate totals with conditional tax/service charge for partner orders
+            $totals = $this->getCartTotals($orderType, $partnerId);
 
             // Create transaction
             $transaction = \App\Models\Transaction::create([
                 'transaction_code' => $this->generateTransactionCode(),
                 'subtotal' => $totals['subtotal'],
                 'total_discount' => $totals['total_discount'],
-                'tax_amount' => $totals['tax_amount'],
+                'tax_amount' => $totals['tax_amount'], // Will be 0 for partner orders
                 'tax_rate' => $totals['tax_rate'],
-                'service_charge_amount' => $totals['service_charge_amount'],
+                'service_charge_amount' => $totals['service_charge_amount'], // Will be 0 for partner orders
                 'service_charge_rate' => $totals['service_charge_rate'],
                 'final_total' => $totals['final_total'],
                 'order_type' => $orderType,
@@ -732,11 +735,11 @@ class TransactionService
     }
 
     /**
-     * Calculate checkout summary
+     * Get checkout summary with partner commission and tax-free calculations
      */
     public function getCheckoutSummary($orderType, $partnerId = null)
     {
-        $cartTotals = $this->getCartTotals();
+        $cartTotals = $this->getCartTotals($orderType, $partnerId);
         
         $summary = [
             'cart_totals' => $cartTotals,

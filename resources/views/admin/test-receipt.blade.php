@@ -264,19 +264,37 @@
                 <span>- Rp. 6.400</span>
             </div>
             
-            <div class="total-row">
-                <span>Pajak (10%):</span>
-                <span>Rp. 5.760</span>
-            </div>
+            @php
+                // Sample business logic - untuk demo purposes
+                // Jika ini adalah online order dengan partner, tidak ada tax/service charge
+                $isPartnerOrder = request('demo_partner') === 'true';
+                $orderType = request('demo_order_type', 'dine_in');
+            @endphp
             
-            <div class="total-row">
-                <span>Biaya Layanan (5%):</span>
-                <span>Rp. 2.880</span>
-            </div>
+            @if(!$isPartnerOrder)
+                <div class="total-row">
+                    <span>Pajak (10%):</span>
+                    <span>Rp. 5.760</span>
+                </div>
+                
+                <div class="total-row">
+                    <span>Biaya Layanan (5%):</span>
+                    <span>Rp. 2.880</span>
+                </div>
+                
+                @php $finalTotal = 66240; @endphp
+            @else
+                <div class="total-row" style="font-style: italic; color: #666;">
+                    <span>Pajak & Biaya Layanan:</span>
+                    <span>Sudah termasuk harga partner</span>
+                </div>
+                
+                @php $finalTotal = 57600; @endphp
+            @endif
             
             <div class="total-row final">
                 <span>TOTAL:</span>
-                <span>Rp. 66.240</span>
+                <span>Rp. {{ number_format($finalTotal, 0, ',', '.') }}</span>
             </div>
         </div>
 
@@ -284,9 +302,21 @@
 
         <!-- Payment -->
         <div style="font-size: 11px; margin: 10px 0;">
-            <div>Bayar (QRIS): Rp. 70.000</div>
-            <div>Kembali: Rp. 3.760</div>
+            @if(!$isPartnerOrder)
+                <div>Bayar (QRIS): Rp. 70.000</div>
+                <div>Kembali: Rp. 3.760</div>
+            @else
+                <div>Bayar (Transfer Partner): Rp. {{ number_format($finalTotal, 0, ',', '.') }}</div>
+                <div>Komisi Partner: Rp. 2.880 (5%)</div>
+            @endif
         </div>
+
+        @if($isPartnerOrder)
+            <div style="text-align: center; margin: 10px 0; padding: 5px; background: #f0f8ff; border: 1px dashed #0066cc; font-size: 10px;">
+                <strong>INFO:</strong> Order Partner - Pajak & Biaya Layanan Tidak Dikenakan<br>
+                Harga partner sudah termasuk pajak
+            </div>
+        @endif
 
         <!-- Custom Footer -->
         @if(request('receipt_footer'))

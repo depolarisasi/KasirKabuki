@@ -20,7 +20,7 @@ class SampleDiscountSeeder extends Seeder
         if ($products->count() >= 3) {
             // Product discount for dine_in
             Discount::create([
-                'name' => 'Diskon Sate Kambing 15% - Makan di Tempat',
+                'name' => 'Diskon Ayam Bakar 15% - Makan di Tempat',
                 'type' => 'product',
                 'value_type' => 'percentage',
                 'value' => 15,

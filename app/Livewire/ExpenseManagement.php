@@ -23,7 +23,7 @@ class ExpenseManagement extends Component
     #[Rule('required|date|before_or_equal:today')]
     public $date = '';
     
-    #[Rule('required|in:gaji,bahan_baku_sate,bahan_baku_makanan_lain,listrik,air,gas,promosi_marketing,pemeliharaan_alat')]
+    #[Rule('required|in:gaji,bahan_baku_makanan_lain,listrik,air,gas,promosi_marketing,pemeliharaan_alat')]
     public $category = '';
 
     // Component state

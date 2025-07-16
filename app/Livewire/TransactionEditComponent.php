@@ -7,7 +7,6 @@ use App\Models\Transaction;
 use App\Models\TransactionAudit;
 use App\Models\Product;
 use App\Models\Partner;
-use App\Models\StockSate;
 use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 use Carbon\Carbon;
 
@@ -362,24 +361,6 @@ class TransactionEditComponent extends Component
                         'subtotal' => $newSubtotal,
                         'total' => $newTotal,
                     ]);
-
-                    // Handle stock adjustment for sate products only
-                    $product = Product::find($editableItem['product_id']);
-                    if ($product && $product->isSateProduct()) {
-                        $transactionDate = $this->transaction->transaction_date ?? $this->transaction->created_at;
-                        $stockSate = StockSate::createOrGetStock(
-                            $transactionDate->format('Y-m-d'),
-                            $product->jenis_sate
-                        );
-
-                        if ($quantityDiff > 0) {
-                            // Increased quantity - increase sold count
-                            $stockSate->addStokTerjual($quantityDiff);
-                        } else {
-                            // Decreased quantity - reduce sold count
-                            $stockSate->reduceStokTerjual(abs($quantityDiff));
-                        }
-                    }
                 }
             }
         }

@@ -74,11 +74,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/config', [AdminController::class, 'config'])->name('config');
     Route::get('/config/store', [AdminController::class, 'storeConfig'])->name('config.store');
     Route::get('/config/audit-trail', [AdminController::class, 'auditTrailConfig'])->name('config.audit-trail');
-    Route::get('/config/stock-sate', function () {
-        return redirect()->route('staf.stock-sate');
-    })->name('config.stock-sate');
     
-    // Reports routes (remove stock report)
+    // Reports routes
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
     Route::get('/reports/sales', [AdminController::class, 'salesReport'])->name('reports.sales');
     Route::get('/reports/expenses', [AdminController::class, 'expensesReport'])->name('reports.expenses');
@@ -197,9 +194,6 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
     
     // Main Staff Interfaces
     Route::get('/cashier', [StafController::class, 'cashier'])->name('cashier');
-    Route::get('/stock', function () {
-        return redirect()->route('staf.stock-sate');
-    })->name('stock');
     
     // Transaction Management
     Route::get('transactions', function () {
@@ -211,7 +205,6 @@ Route::middleware(['auth', 'role:staf|admin'])->prefix('staf')->name('staf.')->g
 
 // Specific Staff Routes - Accessible by staff, admin, and investor
 Route::middleware(['auth', 'role:staf|admin|investor'])->prefix('staf')->name('staf.')->group(function () {
-    Route::get('/stock-sate', [StafController::class, 'stockSate'])->name('stock-sate');
     Route::get('/expenses', [StafController::class, 'expenses'])->name('expenses');
 });
 

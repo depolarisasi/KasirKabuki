@@ -37,19 +37,6 @@
                 </div>
             </a>
 
-            <!-- Stock Sate Management Card -->
-            <a href="{{ route('admin.config.stock-sate') }}" class="card bg-gradient-to-br from-teal-500/10 to-teal-600/10 border border-teal-200 hover:shadow-lg transition-all duration-300 group">
-                <div class="card-body items-center text-center">
-                    <div class="w-16 h-16 bg-teal-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                    </div>
-                    <h3 class="card-title text-lg">Stock Sate</h3>
-                    <p class="text-sm text-base-content/70">Manajemen stok sate dan reconciliation</p>
-                </div>
-            </a>
-
             <!-- Categories Card -->
             <a href="{{ route('admin.categories') }}" class="card bg-gradient-to-br from-green-500/10 to-green-600/10 border border-green-200 hover:shadow-lg transition-all duration-300 group">
                 <div class="card-body items-center text-center">

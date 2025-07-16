@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\Expense;
-use App\Models\StockLog;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Partner;
@@ -293,55 +292,23 @@ class ReportService
     }
 
     /**
-     * Get daily stock reconciliation - SIMPLIFIED for sate products only
+     * Get daily stock reconciliation - DISABLED for KasirKabuki (no stock management)
      */
     public function getDailyStockReconciliation($date = null)
     {
         $date = $date ?: now()->format('Y-m-d');
         
-        // Get all sate products only
-        $sateProducts = Product::whereNotNull('jenis_sate')
-                              ->whereNotNull('quantity_effect')
-                              ->with('category')
-                              ->get();
-        
-        $stockSateService = app(StockSateService::class);
-        $reconciliation = [];
-        
-        foreach ($sateProducts as $product) {
-            $stockSateEntry = $stockSateService->getStockForDate($product->jenis_sate, $date);
-            
-            $initialStock = $stockSateEntry ? $stockSateEntry->stok_awal : 0;
-            $soldStock = $stockSateEntry ? $stockSateEntry->stok_terjual : 0;
-            $remainingStock = $initialStock - $soldStock;
-            
-            // Convert to product units
-            $initialProductUnits = floor($initialStock / $product->quantity_effect);
-            $soldProductUnits = floor($soldStock / $product->quantity_effect);
-            $remainingProductUnits = floor($remainingStock / $product->quantity_effect);
-            
-            $reconciliation[] = [
-                'product' => $product,
-                'jenis_sate' => $product->jenis_sate,
-                'quantity_effect' => $product->quantity_effect,
-                'initial_stock_sate' => $initialStock,
-                'sold_stock_sate' => $soldStock,
-                'remaining_stock_sate' => $remainingStock,
-                'initial_product_units' => $initialProductUnits,
-                'sold_product_units' => $soldProductUnits,
-                'remaining_product_units' => $remainingProductUnits,
-                'stock_entry' => $stockSateEntry
-            ];
-        }
-        
+        // KasirKabuki tidak menggunakan stock management
         return [
             'date' => $date,
-            'sate_products' => $reconciliation,
+            'products' => [],
             'summary' => [
-                'total_sate_products' => count($reconciliation),
-                'products_with_stock' => collect($reconciliation)->where('initial_stock_sate', '>', 0)->count(),
-                'products_sold_out' => collect($reconciliation)->where('remaining_stock_sate', '<=', 0)->count(),
-            ]
+                'total_products' => 0,
+                'total_initial_stock' => 0,
+                'total_sold_stock' => 0,
+                'total_remaining_stock' => 0,
+            ],
+            'message' => 'Stock management is disabled for KasirKabuki'
         ];
     }
 

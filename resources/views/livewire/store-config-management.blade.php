@@ -67,7 +67,7 @@
                         <input wire:model="store_email" 
                                type="email" 
                                class="input input-bordered w-full @error('store_email') input-error @enderror" 
-                               placeholder="info@satebraga.com">
+                               placeholder="info@kasirkabuki.com">
                         @error('store_email')
                             <label class="label">
                                 <span class="label-text-alt text-error">{{ $message }}</span>
@@ -88,6 +88,88 @@
                                 <span class="label-text-alt text-error">{{ $message }}</span>
                             </label>
                         @enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tax and Service Charge Configuration Card -->
+        <div class="card bg-base-300 shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title text-lg mb-4">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                    </svg>
+                    Pengaturan Pajak dan Service Charge
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Tax Rate -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Pajak Restoran (%) *</span>
+                            <span class="label-text-alt">Default: 10% (PPN Indonesia)</span>
+                        </label>
+                        <div class="relative">
+                            <input wire:model="tax_rate" 
+                                   type="number" 
+                                   step="0.1"
+                                   min="0"
+                                   max="100"
+                                   class="input input-bordered w-full pr-8 @error('tax_rate') input-error @enderror" 
+                                   placeholder="10.0">
+                            <span class="absolute right-3 top-3 text-base-content/70">%</span>
+                        </div>
+                        @error('tax_rate')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                        <label class="label">
+                            <span class="label-text-alt">Pajak diterapkan setelah diskon, sebelum service charge</span>
+                        </label>
+                    </div>
+
+                    <!-- Service Charge Rate -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Service Charge (%) *</span>
+                            <span class="label-text-alt">Default: 5% (Standar restoran)</span>
+                        </label>
+                        <div class="relative">
+                            <input wire:model="service_charge_rate" 
+                                   type="number" 
+                                   step="0.1"
+                                   min="0"
+                                   max="100"
+                                   class="input input-bordered w-full pr-8 @error('service_charge_rate') input-error @enderror" 
+                                   placeholder="5.0">
+                            <span class="absolute right-3 top-3 text-base-content/70">%</span>
+                        </div>
+                        @error('service_charge_rate')
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ $message }}</span>
+                            </label>
+                        @enderror
+                        <label class="label">
+                            <span class="label-text-alt">Service charge diterapkan setelah subtotal + pajak</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Calculation Info -->
+                <div class="alert alert-info mt-4">
+                    <svg class="w-6 h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <h4 class="font-bold">Urutan Perhitungan:</h4>
+                        <p class="text-sm">
+                            Subtotal → Diskon → <strong>Pajak ({{ $tax_rate ?? 10 }}%)</strong> → <strong>Service Charge ({{ $service_charge_rate ?? 5 }}%)</strong> → Total Akhir
+                        </p>
+                        <p class="text-xs mt-1 opacity-70">
+                            Contoh: Rp 100.000 - Rp 10.000 (diskon) = Rp 90.000 + Rp 9.000 (pajak) = Rp 99.000 + Rp 4.950 (service) = <strong>Rp 103.950</strong>
+                        </p>
                     </div>
                 </div>
             </div>

@@ -9,7 +9,7 @@
 
         <!-- PWA Meta Tags -->
         <meta name="application-name" content="KasirBraga">
-        <meta name="description" content="Progressive Web App untuk Point of Sales Sate Braga">
+        <meta name="description" content="Progressive Web App untuk Point of Sales KasirKabuki">
         <meta name="theme-color" content="#126339">
         <meta name="background-color" content="#F9FAFB">
         <meta name="mobile-web-app-capable" content="yes">

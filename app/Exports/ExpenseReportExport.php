@@ -34,7 +34,7 @@ class ExpenseReportExport implements FromArray, WithTitle, WithStyles, ShouldAut
         $allExpenses = $this->reportData['all_expenses'] ?? [];
         
         $data = [
-            ['LAPORAN PENGELUARAN SATE BRAGA'],
+            ['LAPORAN PENGELUARAN KASIRKABUKI'],
             [''],
             ['Periode', Carbon::parse($this->startDate)->format('d/m/Y') . ' - ' . Carbon::parse($this->endDate)->format('d/m/Y')],
             ['Dibuat pada', Carbon::now()->format('d/m/Y H:i')],

@@ -19,8 +19,6 @@ class Product extends Model
         'price',
         'category_id',
         'photo',
-        'jenis_sate',
-        'quantity_effect',
     ];
 
     protected $dates = ['deleted_at'];
@@ -75,46 +73,6 @@ class Product extends Model
     public function packagesUsingThisComponent(): HasMany
     {
         return $this->hasMany(ProductComponent::class, 'component_product_id');
-    }
-
-    /**
-     * Get stock sate entries for this product (jika ini produk sate)
-     */
-    public function getStockSateForDate($date = null)
-    {
-        if (!$this->jenis_sate) {
-            return null; // Non-sate products tidak memerlukan stock tracking
-        }
-        
-        $date = $date ?: now()->format('Y-m-d');
-        return \App\Models\StockSate::getStockForDateAndJenis($date, $this->jenis_sate);
-    }
-
-    /**
-     * Get current stock - hanya untuk produk sate
-     */
-    public function getCurrentStock()
-    {
-        if (!$this->jenis_sate || !$this->quantity_effect) {
-            return null; // Non-sate products tidak memerlukan stock tracking
-        }
-
-        $stockSateEntry = $this->getStockSateForDate();
-        
-        if ($stockSateEntry) {
-            $availableStockSate = ($stockSateEntry->stok_awal ?? 0) - ($stockSateEntry->stok_terjual ?? 0);
-            return floor($availableStockSate / $this->quantity_effect);
-        }
-        
-        return 0;
-    }
-
-    /**
-     * Check if this is a sate product that requires stock tracking
-     */
-    public function isSateProduct()
-    {
-        return !empty($this->jenis_sate) && !empty($this->quantity_effect);
     }
 
     /**
@@ -302,144 +260,48 @@ class Product extends Model
     }
 
     /**
-     * Check if package has enough component stock - SIMPLIFIED for sate products only
+     * Check if package has enough stock - SIMPLIFIED for KasirKabuki (no stock management)
      */
     public function hasEnoughStockForPackage($quantity = 1)
     {
-        if (!$this->isPackageProduct()) {
-            // For regular products, hanya check stock jika sate product
-            if ($this->isSateProduct()) {
-            return $this->getCurrentStock() >= $quantity;
-            }
-            return true; // Non-sate products tidak perlu stock check
-        }
-
-        // For package products, check all component stocks
-        foreach ($this->activeComponents as $component) {
-            if (!$component->hasEnoughComponentStock($quantity)) {
-                return false;
-            }
-        }
-
+        // KasirKabuki tidak menggunakan stock management
+        // Semua produk dianggap selalu tersedia
         return true;
     }
 
     /**
-     * Get component stock status for package products - SIMPLIFIED
+     * Get simplified stock status for KasirKabuki
      */
     public function getPackageStockStatus($quantity = 1)
     {
-        if (!$this->isPackageProduct()) {
-            $currentStock = $this->isSateProduct() ? $this->getCurrentStock() : null;
-            $isSufficient = $this->isSateProduct() ? ($currentStock >= $quantity) : true;
-            
-            return [
-                'is_package' => false,
-                'is_sate_product' => $this->isSateProduct(),
-                'current_stock' => $currentStock,
-                'is_sufficient' => $isSufficient
-            ];
-        }
-
-        $componentStatuses = [];
-        $overallSufficient = true;
-
-        foreach ($this->activeComponents as $component) {
-            $status = $component->getComponentStockStatus($quantity);
-            $componentStatuses[] = $status;
-            
-            if (!$status['is_sufficient']) {
-                $overallSufficient = false;
-            }
-        }
-
         return [
-            'is_package' => true,
-            'components' => $componentStatuses,
-            'is_sufficient' => $overallSufficient,
-            'can_make_quantity' => $this->getMaxPackageQuantityFromComponents()
+            'is_package' => $this->isPackageProduct(),
+            'is_sufficient' => true, // Selalu cukup karena tidak ada stock management
+            'current_stock' => null, // Tidak ada stock tracking
         ];
     }
 
     /**
-     * Calculate maximum package quantity - SIMPLIFIED for sate products only
-     */
-    public function getMaxPackageQuantityFromComponents()
-    {
-        if (!$this->isPackageProduct()) {
-            if ($this->isSateProduct()) {
-            return $this->getCurrentStock();
-            }
-            return null; // Non-sate products tidak perlu stock calculation
-        }
-
-        $maxQuantity = PHP_INT_MAX;
-
-        foreach ($this->activeComponents as $component) {
-            if ($component->componentProduct->isSateProduct()) {
-            $componentStock = $component->componentProduct->getCurrentStock();
-            $possibleQuantity = floor($componentStock / $component->quantity_per_package);
-            $maxQuantity = min($maxQuantity, $possibleQuantity);
-            }
-        }
-
-        return $maxQuantity === PHP_INT_MAX ? null : $maxQuantity;
-    }
-
-    /**
-     * DEPRECATED - Stock operations tidak diperlukan dengan simplified approach
-     * Sate products hanya menggunakan StockSate system
-     */
-    public function reduceStockForSale($quantity, $userId, $transactionId = null, $notes = null)
-    {
-        // Stock reduction ditangani oleh StockSateService untuk sate products
-        // Non-sate products tidak perlu stock tracking
-        return null;
-    }
-
-    /**
-     * DEPRECATED - Stock operations tidak diperlukan dengan simplified approach
-     */
-    public function returnStockForCancellation($quantity, $userId, $transactionId = null, $notes = null)
-    {
-        // Stock return ditangani oleh StockSateService untuk sate products
-        // Non-sate products tidak perlu stock tracking
-        return null;
-    }
-
-    /**
-     * Get simplified stock information
+     * Get simplified stock information for KasirKabuki
      */
     public function getStockInfo()
     {
         $info = [
             'product_id' => $this->id,
             'product_name' => $this->name,
-            'is_sate_product' => $this->isSateProduct(),
             'is_package' => $this->isPackageProduct(),
             'is_component' => $this->isComponentProduct(),
+            'current_stock' => null, // Tidak ada stock tracking
+            'stock_management_enabled' => false,
         ];
-
-        if ($this->isSateProduct()) {
-            $info['current_stock'] = $this->getCurrentStock();
-            $info['jenis_sate'] = $this->jenis_sate;
-            $info['quantity_effect'] = $this->quantity_effect;
-        } else {
-            $info['current_stock'] = null; // Non-sate products tidak memerlukan stock tracking
-        }
 
         if ($this->isPackageProduct()) {
             $info['package_info'] = [
-                'max_makeable' => $this->getMaxPackageQuantityFromComponents(),
                 'components' => $this->activeComponents->map(function ($component) {
                     return [
                         'component_id' => $component->component_product_id,
                         'component_name' => $component->componentProduct->name,
                         'quantity_per_package' => $component->quantity_per_package,
-                        'is_sate_product' => $component->componentProduct->isSateProduct(),
-                        'current_stock' => $component->componentProduct->isSateProduct() 
-                            ? $component->componentProduct->getCurrentStock() 
-                            : null
                     ];
                 })
             ];

@@ -24,19 +24,6 @@
                 </div>
             </a>
 
-            <!-- Stock Report Card -->
-            <a href="{{ route('admin.config.stock-sate') }}" class="card bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 border border-cyan-200 hover:shadow-lg transition-all duration-300 group">
-                <div class="card-body items-center text-center">
-                    <div class="w-16 h-16 bg-cyan-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                    </div>
-                    <h3 class="card-title text-lg">Laporan Stok</h3>
-                    <p class="text-sm text-base-content/70">Monitor inventori dan pergerakan stok</p>
-                </div>
-            </a>
-
             <!-- Expenses Report Card -->
             <a href="{{ route('admin.reports.expenses') }}" class="card bg-gradient-to-br from-amber-500/10 to-amber-600/10 border border-amber-200 hover:shadow-lg transition-all duration-300 group">
                 <div class="card-body items-center text-center">

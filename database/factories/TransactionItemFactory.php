@@ -23,7 +23,7 @@ class TransactionItemFactory extends Factory
             'transaction_id' => Transaction::factory(),
             'product_id' => Product::factory(),
             'product_name' => $this->faker->randomElement([
-                'Sate Ayam', 'Sate Kambing', 'Sate Bebek', 'Nasi Gudeg'
+                'Ayam Bakar', 'Ayam Goreng', 'Rendang Daging', 'Nasi Gudeg'
             ]),
             'product_price' => $productPrice,
             'quantity' => $quantity,

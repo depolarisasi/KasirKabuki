@@ -1,44 +1,48 @@
 # Active Context
 
 ## Current Focus
-- **Fixed Icon Path References**: Updated all remaining references from `/icons/` to `/assets/` for PWA icon consistency
-- **PWA Icon Standardization**: All icon paths now correctly point to `/assets/` directory structure
-- **Service Worker Optimization**: Fixed push notification icon paths untuk proper PWA functionality
+- **3-Tier Role System Consistency Restored**: Reverted back to original clean architecture
+- **Role Inconsistency Fixed**: Removed 'kasir' role, kasir users now properly use 'staf' role
+- **Receipt Template Enhanced**: Added tax & service charge breakdown to all receipt templates
+- **Complete Tax & Service Charge Display**: Proper breakdown in struk printing
 
 ## Recent Changes
-- **Fixed Service Worker Icons**: Updated `public/sw.js` push notification icon paths from `/icons/` to `/assets/`
-- **Fixed Layout Icon References**: Updated `resources/views/components/layouts/app.blade.php` PWA icon paths
-- **Standardized Icon Structure**: All icons now consistently use `/assets/` directory path
-- **PWA Compatibility**: Ensured icon references work correctly untuk web app installation
+- **Enhanced Receipt Templates**: Updated receipt print templates untuk include tax dan service charge
+- **Android Print Integration**: Added tax dan service charge ke JSON output untuk Bluetooth printing
+- **Test Receipt Updated**: Test print template now shows tax dan service charge breakdown
+- **Proper Totals Display**: Subtotal → Discount → Tax → Service Charge → Final Total sequence
+- **Consistent Formatting**: Tax dan service charge properly formatted dengan percentage rates
+- **Conditional Display**: Tax dan service charge hanya ditampilkan jika amount > 0
 
 ## Technical Implementation
-- **Service Worker**: Updated push notification icons to use `/assets/icon-192x192.png`
-- **Layout Headers**: Fixed PWA manifest icon references to use proper asset paths
-- **File Structure**: Icons located at `/assets/icon-192x192.png` and `/assets/icon-512x512.png`
-- **Consistency**: All references now point to same directory structure
+- **Receipt Template (print.blade.php)**: Enhanced totals section dengan tax dan service charge display
+- **Android Print (StafController)**: Added tax dan service charge lines ke JSON output
+- **Test Receipt (test-print.blade.php)**: Include tax dan service charge untuk test printing
+- **Transaction Data Access**: Menggunakan `$transaction->tax_amount`, `$transaction->service_charge_amount`, dll.
+- **Format Display**: "Pajak (10%): Rp. X,XXX" dan "Biaya Layanan (5%): Rp. X,XXX"
 
 ## Masalah yang Diselesaikan
-- ✅ **Inconsistent Icon Paths**: All `/icons/` references changed to `/assets/`
-- ✅ **Service Worker Icons**: Push notifications now use correct icon paths
-- ✅ **PWA Installation**: Web app icons properly referenced untuk mobile installation
-- ✅ **Asset Loading**: No more 404 errors untuk missing icon files
-- ✅ **Directory Structure**: Consistent asset organization throughout application
+- ✅ **Role System Inconsistency**: Removed 4th 'kasir' role that broke original 3-tier design
+- ✅ **Receipt Missing Tax Info**: Struk sekarang menampilkan breakdown tax dan service charge
+- ✅ **Android Print Missing Tax**: Bluetooth printing sekarang include tax dan service charge
+- ✅ **Test Receipt Incomplete**: Test print template now shows complete breakdown
+- ✅ **Customer Receipt Transparency**: Customer dapat melihat breakdown biaya dengan jelas
+- ✅ **Audit Trail Complete**: All receipt formats consistent dengan database tax/service data
 
 ## Current Architecture
-- **Icon Assets**: All located in `/public/assets/` directory
-- **PWA Icons**: 192x192 and 512x512 PNG files untuk web app installation
-- **Logo Assets**: `logo-150x75.png` untuk application branding
-- **Service Worker**: Proper icon references untuk push notifications
-- **Layout Headers**: PWA-compliant meta tags dan icon references
+- **3-Tier Role System**: admin, staf, investor (as per original design)
+- **Complete Receipt Display**: Subtotal, discount, tax, service charge, final total
+- **Multi-format Support**: Web receipt, Android Bluetooth print, test print semua consistent
+- **Tax & Service Integration**: Proper calculation dan display sesuai transaction data
 
 ## Prioritas Saat Ini
-- Test PWA installation functionality
-- Verify push notification icon display
-- Monitor untuk any remaining asset loading issues
-- Ensure all icon references work correctly
+- Test receipt printing dengan tax dan service charge yang enabled
+- Verify Android Bluetooth printing menampilkan tax breakdown dengan benar
+- Check format alignment dan readability di thermal printer 80mm
+- Ensure all receipt formats consistent dan professional
 
 ## Next Steps
-- Test complete PWA installation workflow
-- Verify service worker functionality dengan proper icons
-- Check push notification display dengan correct icons
-- Monitor console untuk any remaining asset errors 
+- Test complete receipt flow dengan transaction yang ada tax dan service charge
+- Verify thermal printer output formatting tetap rapi dengan additional lines
+- Check customer feedback tentang receipt clarity dan transparency
+- Monitor untuk any formatting issues di various printer types 

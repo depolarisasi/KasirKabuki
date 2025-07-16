@@ -35,12 +35,6 @@ class ProductManagement extends Component
 
     public $existingPhoto = null;
     
-    #[Rule('nullable|in:Sate Dada Asin,Sate Dada Pedas,Sate Kulit,Sate Paha')]
-    public $jenis_sate = '';
-    
-    #[Rule('nullable|integer|min:0|max:999')]
-    public $quantity_effect = '';
-
     // Component state
     public $productId = null;
     public $isEditMode = false;
@@ -96,8 +90,6 @@ class ProductManagement extends Component
         $this->price = $product->price;
         $this->category_id = $product->category_id;
         $this->existingPhoto = $product->photo;
-        $this->jenis_sate = $product->jenis_sate;
-        $this->quantity_effect = $product->quantity_effect;
         $this->isEditMode = true;
         $this->showModal = true;
         
@@ -115,8 +107,6 @@ class ProductManagement extends Component
                 'description' => $this->description,
                 'price' => $this->price,
                 'category_id' => $this->category_id,
-                'jenis_sate' => $this->jenis_sate ?: null,
-                'quantity_effect' => $this->quantity_effect ?: null,
             ];
 
             // Handle photo upload
@@ -258,7 +248,7 @@ class ProductManagement extends Component
 
     public function resetForm()
     {
-        $this->reset(['name', 'description', 'price', 'category_id', 'photo', 'productId', 'existingPhoto', 'jenis_sate', 'quantity_effect']);
+        $this->reset(['name', 'description', 'price', 'category_id', 'photo', 'productId', 'existingPhoto']);
         $this->enablePartnerPricing = false;
         $this->partnerPrices = [];
     }
@@ -372,37 +362,6 @@ class ProductManagement extends Component
             if ($field === 'is_active' && !$value) {
                 $this->partnerPrices[$partnerId]['price'] = '';
             }
-        }
-    }
-
-    /**
-     * Get jenis sate options untuk dropdown
-     */
-    public function getJenisSateOptions()
-    {
-        return [
-            'Sate Dada Asin',
-            'Sate Dada Pedas',
-            'Sate Kulit',
-            'Sate Paha'
-        ];
-    }
-
-    /**
-     * Check if current product is sate product
-     */
-    public function isSateProduct()
-    {
-        return !empty($this->jenis_sate);
-    }
-
-    /**
-     * Clear quantity effect when jenis_sate is cleared
-     */
-    public function updatedJenisSate()
-    {
-        if (empty($this->jenis_sate)) {
-            $this->quantity_effect = '';
         }
     }
 }

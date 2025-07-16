@@ -60,6 +60,15 @@
                                             Diskon
                                         </a>
                                     </li>
+                                    <li>
+                                        <a href="{{ route('admin.users') }}"
+                                           class="{{ request()->routeIs('admin.users') ? 'active' : '' }}">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                            </svg>
+                                            Users
+                                        </a>
+                                    </li>
                                 </ul>
                             </div>
                             
@@ -93,15 +102,6 @@
                                             Laporan Pengeluaran
                                         </a>
                                     </li>
-                                    <li>
-                                        <a href="{{ route('admin.config.stock-sate') }}"
-                                           class="{{ request()->routeIs('admin.config.stock-sate') ? 'active' : '' }}">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                            </svg>
-                                            Stok Sate
-                                        </a>
-                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -116,13 +116,6 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m4.5 0a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4z"></path>
                                 </svg>
                                 Kasir
-                            </a>
-                            <a href="{{ route('staf.stock-sate') }}" 
-                               class="px-3 py-2 rounded-md text-sm font-medium {{ request()->routeIs('staf.stock*') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
-                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                </svg>
-                                Manajemen Stok
                             </a>
                             <a href="{{ route('staf.expenses') }}" 
                                class="px-3 py-2 rounded-md text-sm font-medium {{ request()->routeIs('staf.expenses') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
@@ -187,10 +180,6 @@
                            class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('admin.reports.expenses') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
                             Laporan Pengeluaran
                         </a>
-                        <a href="{{ route('admin.config.stock-sate') }}"
-                           class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('admin.config.stock-sate') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
-                            Stok Sate
-                        </a>
                     </div>
                 </div>
             @endif
@@ -201,10 +190,6 @@
                         <a href="{{ route('staf.cashier') }}" 
                            class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('staf.cashier') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
                             Kasir
-                        </a>
-                        <a href="{{ route('staf.stock-sate') }}" 
-                           class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('staf.stock*') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">
-                            Manajemen Stok
                         </a>
                         <a href="{{ route('staf.expenses') }}" 
                            class="block px-3 py-2 rounded-md text-base font-medium {{ request()->routeIs('staf.expenses') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:text-blue-600' }}">

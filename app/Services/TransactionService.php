@@ -7,7 +7,6 @@ use App\Models\ProductPartnerPrice;
 use App\Models\Discount;
 use App\Models\Partner;
 use App\Models\Category;
-use App\Services\StockSateService;
 use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
 
@@ -120,11 +119,13 @@ class TransactionService
 
     /**
      * Get cart totals with calculations
+     * Order: Subtotal → Discount → Tax → Service Charge → Final Total
      */
     public function getCartTotals()
     {
         $cart = $this->getCart();
         $appliedDiscounts = Session::get('applied_discounts', []);
+        $storeSettings = \App\Models\StoreSetting::current();
         
         $subtotal = 0;
         $totalItems = 0;
@@ -164,15 +165,31 @@ class TransactionService
         }
         
         $totalDiscount = $productDiscountAmount + $transactionDiscountAmount;
-        $finalTotal = $subtotal - $totalDiscount;
+        $afterDiscount = $subtotal - $totalDiscount;
+        
+        // Calculate tax (applied after discount)
+        $taxAmount = $storeSettings->calculateTaxAmount($afterDiscount);
+        $subtotalWithTax = $afterDiscount + $taxAmount;
+        
+        // Calculate service charge (applied after tax)
+        $serviceChargeAmount = $storeSettings->calculateServiceChargeAmount($subtotalWithTax);
+        
+        // Final total includes tax and service charge
+        $finalTotal = $subtotalWithTax + $serviceChargeAmount;
         
         return [
-            'subtotal' => $subtotal,
+            'subtotal' => round($subtotal, 2),
             'total_items' => $totalItems,
-            'product_discount' => $productDiscountAmount,
-            'transaction_discount' => $transactionDiscountAmount,
-            'total_discount' => $totalDiscount,
-            'final_total' => max(0, $finalTotal), // Ensure total can't be negative
+            'product_discount' => round($productDiscountAmount, 2),
+            'transaction_discount' => round($transactionDiscountAmount, 2),
+            'total_discount' => round($totalDiscount, 2),
+            'after_discount' => round($afterDiscount, 2),
+            'tax_amount' => round($taxAmount, 2),
+            'tax_rate' => $storeSettings->tax_rate,
+            'subtotal_with_tax' => round($subtotalWithTax, 2),
+            'service_charge_amount' => round($serviceChargeAmount, 2),
+            'service_charge_rate' => $storeSettings->service_charge_rate,
+            'final_total' => round(max(0, $finalTotal), 2), // Ensure total can't be negative
             'cart_items' => $cart,
             'applied_discounts' => $appliedDiscounts
         ];
@@ -316,35 +333,17 @@ class TransactionService
     }
 
     /**
-     * Save current cart as order - SIMPLIFIED for sate products only
+     * Save current cart as order
      */
     public function saveOrder($orderName)
     {
-            $cart = $this->getCart();
-            
-            if (empty($cart)) {
+        $cart = $this->getCart();
+        
+        if (empty($cart)) {
             throw new \Exception('Keranjang kosong');
-            }
-            
-        // Validate stock untuk sate products ONLY
-        foreach ($cart as $item) {
-            $productId = $item['product_id'];
-            $product = Product::find($productId);
-            
-            if ($product) {
-                // Only check stock availability for sate products
-                if ($product->isSateProduct()) {
-                    $currentStock = $product->getCurrentStock();
-                    
-                    if ($currentStock < $item['quantity']) {
-                        throw \App\Exceptions\BusinessException::insufficientStock($product->name, $currentStock);
-                    }
-                }
-                // Non-sate products dapat dijual tanpa stock check
-            }
         }
 
-        // Save order to session with stock validation
+        // Save order to session
         $savedOrders = Session::get('saved_orders', []);
         $cartTotals = $this->getCartTotals();
         
@@ -375,18 +374,8 @@ class TransactionService
         
         $order = $savedOrders[$orderName];
         
-        // Validate current stock untuk sate products sebelum load
-        foreach ($order['items'] as $item) {
-            $product = Product::find($item['product_id']);
-            
-            if ($product && $product->isSateProduct()) {
-                $currentStock = $product->getCurrentStock();
-                
-                if ($currentStock < $item['quantity']) {
-                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. Stok tersedia: {$currentStock}");
-                }
-            }
-        }
+        // KasirKabuki tidak menggunakan stock management
+        // Semua produk dapat di-load tanpa validasi stock
         
         // Load order data to session
         Session::put('cart', $order['items']);
@@ -399,7 +388,7 @@ class TransactionService
     }
 
     /**
-     * Delete saved order dan return stock untuk sate products
+     * Delete saved order
      */
     public function deleteSavedOrder($orderName)
     {
@@ -417,7 +406,7 @@ class TransactionService
                     }
                     
     /**
-     * Update saved order with current cart - SIMPLIFIED
+     * Update saved order with current cart
      */
     public function updateSavedOrder($orderName)
     {
@@ -433,19 +422,8 @@ class TransactionService
             throw new \Exception('Pesanan tidak ditemukan');
             }
             
-        // Validate stock untuk sate products ONLY
-        foreach ($cart as $item) {
-            $productId = $item['product_id'];
-            $product = Product::find($productId);
-            
-            if ($product && $product->isSateProduct()) {
-                $currentStock = $product->getCurrentStock();
-                
-                if ($currentStock < $item['quantity']) {
-                    throw new \Exception("Stok tidak mencukupi untuk {$product->name}. Stok tersedia: {$currentStock}");
-                }
-            }
-        }
+        // KasirKabuki tidak menggunakan stock management
+        // Semua produk dapat di-update tanpa validasi stock
 
         // Update saved order
         $cartTotals = $this->getCartTotals();
@@ -532,7 +510,7 @@ class TransactionService
     }
 
     /**
-     * Complete transaction from cart - SIMPLIFIED for sate products
+     * Complete transaction from cart
      */
     public function completeTransaction($orderType, $partnerId = null, $paymentMethod = 'cash', $notes = null)
     {
@@ -554,6 +532,10 @@ class TransactionService
                 'transaction_code' => $this->generateTransactionCode(),
                 'subtotal' => $totals['subtotal'],
                 'total_discount' => $totals['total_discount'],
+                'tax_amount' => $totals['tax_amount'],
+                'tax_rate' => $totals['tax_rate'],
+                'service_charge_amount' => $totals['service_charge_amount'],
+                'service_charge_rate' => $totals['service_charge_rate'],
                 'final_total' => $totals['final_total'],
                 'order_type' => $orderType,
                 'partner_id' => $partnerId,
@@ -565,9 +547,7 @@ class TransactionService
                 'user_id' => auth()->id(),
             ]);
 
-            // Create transaction items and update StockSate untuk sate products
-            $stockSateService = app(StockSateService::class);
-            
+            // Create transaction items - KasirKabuki tidak menggunakan stock management
             foreach ($cart as $item) {
                 $product = Product::find($item['product_id']);
                 $appropriatePrice = $product->getAppropriatePrice($orderType, $partnerId);
@@ -582,15 +562,6 @@ class TransactionService
                     'discount_amount' => 0, // Default no discount per item
                     'total' => $appropriatePrice * $item['quantity'],
                 ]);
-
-                // Update StockSate HANYA untuk sate products
-                if ($product && $product->isSateProduct()) {
-                    $stockSateService->updateStockFromSale(
-                        $product->jenis_sate,
-                        $item['quantity'] * $product->quantity_effect,
-                        now()->format('Y-m-d')
-                    );
-                }
             }
 
             // Create discount records
@@ -642,7 +613,7 @@ class TransactionService
     }
 
     /**
-     * Complete backdated transaction - SIMPLIFIED for sate products
+     * Complete backdated transaction
      */
     public function completeBackdatedTransaction($orderType, $customDate, $partnerId = null, $paymentMethod = 'cash', $notes = null)
     {
@@ -674,6 +645,10 @@ class TransactionService
                 'transaction_code' => $this->generateTransactionCode(),
                 'subtotal' => $totals['subtotal'],
                 'total_discount' => $totals['total_discount'],
+                'tax_amount' => $totals['tax_amount'],
+                'tax_rate' => $totals['tax_rate'],
+                'service_charge_amount' => $totals['service_charge_amount'],
+                'service_charge_rate' => $totals['service_charge_rate'],
                 'final_total' => $totals['final_total'],
                 'order_type' => $orderType,
                 'partner_id' => $partnerId,
@@ -687,9 +662,7 @@ class TransactionService
                 'updated_at' => now(),
             ]);
 
-            // Create transaction items and update StockSate untuk sate products
-            $stockSateService = app(StockSateService::class);
-            
+            // Create transaction items - KasirKabuki tidak menggunakan stock management
             foreach ($cart as $item) {
                 $product = Product::find($item['product_id']);
                 $appropriatePrice = $product->getAppropriatePrice($orderType, $partnerId);
@@ -706,15 +679,6 @@ class TransactionService
                     'created_at' => $targetDate,
                     'updated_at' => now(),
                 ]);
-
-                // Update StockSate HANYA untuk sate products dengan target date
-                if ($product && $product->isSateProduct()) {
-                    $stockSateService->updateStockFromSale(
-                        $product->jenis_sate,
-                        $item['quantity'] * $product->quantity_effect,
-                        $targetDate->format('Y-m-d')
-                    );
-                }
             }
 
             // Create discount records
@@ -737,7 +701,7 @@ class TransactionService
                         $discountAmount = $effectiveSubtotal * ($discountData['value'] / 100);
                     } else {
                         $discountAmount = $discountData['value'];
-                }
+                    }
                 }
                 
                 \App\Models\TransactionDiscount::create([
@@ -816,7 +780,7 @@ class TransactionService
     }
 
     /**
-     * Cancel transaction dan return stock untuk sate products
+     * Cancel transaction
      */
     public function cancelTransaction($transactionId, $reason = null)
     {
@@ -837,20 +801,8 @@ class TransactionService
                 'cancellation_reason' => $reason
             ]);
 
-            // Return stock HANYA untuk sate products
-            $stockSateService = app(StockSateService::class);
-            
-            foreach ($transaction->items as $item) {
-                $product = Product::find($item->product_id);
-                
-                if ($product && $product->isSateProduct()) {
-                    $stockSateService->updateStockFromCancellation(
-                        $product->jenis_sate,
-                        $item->quantity * $product->quantity_effect,
-                        $transaction->transaction_date->format('Y-m-d')
-                    );
-                }
-            }
+            // KasirKabuki tidak menggunakan stock management
+            // Tidak perlu return stock
 
             \DB::commit();
 

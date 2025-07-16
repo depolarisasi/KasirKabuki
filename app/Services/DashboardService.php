@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Transaction;
 use App\Models\Expense;
 use App\Models\Product;
-use App\Models\StockLog;
 use App\Models\User;
 use App\Models\Category;
 use App\Models\Partner;
@@ -215,37 +214,15 @@ class DashboardService
     }
 
     /**
-     * Get product performance statistics
+     * Get product statistics - SIMPLIFIED for KasirKabuki (no stock management)
      */
     private function getProductStats($startDate, $endDate)
     {
         // Get all products first
         $allProducts = Product::with('category')->get();
         
-        // Low stock alerts - using StockLog system
-        $lowStockProducts = collect();
-        $outOfStockProducts = collect();
-        $activeProductsCount = 0;
-        
-        foreach ($allProducts as $product) {
-            $currentStock = $product->getCurrentStock();
-            $minStock = $product->min_stock ?? 0;
-            
-            // Check low stock
-            if ($currentStock > 0 && $currentStock <= $minStock) {
-                $lowStockProducts->push($product);
-            }
-            
-            // Check out of stock (exclude sate products as they don't require stock)
-            if ($currentStock <= 0 && $product->type !== 'sate') {
-                $outOfStockProducts->push($product);
-            }
-            
-            // Count active products
-            if ($currentStock > 0 || $product->type === 'sate') {
-                $activeProductsCount++;
-            }
-        }
+        // KasirKabuki tidak menggunakan stock management
+        $activeProductsCount = $allProducts->count();
 
         // Products with no sales
         $productsWithSales = DB::table('transaction_items')
@@ -260,8 +237,8 @@ class DashboardService
             ->get();
 
         return [
-            'low_stock' => $lowStockProducts,
-            'out_of_stock' => $outOfStockProducts,
+            'low_stock' => collect(), // No stock management, so no low stock alerts
+            'out_of_stock' => collect(), // No stock management, so no out of stock alerts
             'no_sales' => $productsWithoutSales,
             'total_products' => Product::count(),
             'active_products' => $activeProductsCount,
@@ -331,53 +308,13 @@ class DashboardService
     }
 
     /**
-     * Get system alerts and notifications
+     * Get system alerts and notifications - SIMPLIFIED for KasirKabuki (no stock management)
      */
     private function getSystemAlerts()
     {
         $alerts = [];
 
-        // Count low stock and out of stock products using StockLog system
-        $allProducts = Product::with('category')->get();
-        $lowStockCount = 0;
-        $outOfStockCount = 0;
-        
-        foreach ($allProducts as $product) {
-            $currentStock = $product->getCurrentStock();
-            $minStock = $product->min_stock ?? 0;
-            
-            // Count low stock
-            if ($currentStock > 0 && $currentStock <= $minStock) {
-                $lowStockCount++;
-            }
-            
-            // Count out of stock (exclude sate products)
-            if ($currentStock <= 0 && $product->type !== 'sate') {
-                $outOfStockCount++;
-            }
-        }
-
-        if ($lowStockCount > 0) {
-            $alerts[] = [
-                'type' => 'warning',
-                'icon' => 'exclamation-triangle',
-                'title' => 'Stok Menipis',
-                'message' => "{$lowStockCount} produk memiliki stok di bawah minimum",
-                'action_url' => route('staf.stock-sate'),
-                'action_text' => 'Lihat Stok',
-            ];
-        }
-
-        if ($outOfStockCount > 0) {
-            $alerts[] = [
-                'type' => 'error',
-                'icon' => 'x-circle',
-                'title' => 'Stok Habis',
-                'message' => "{$outOfStockCount} produk kehabisan stok",
-                'action_url' => route('staf.stock-sate'),
-                'action_text' => 'Lihat Stok',
-            ];
-        }
+        // KasirKabuki tidak menggunakan stock management, jadi tidak ada stock alerts
 
         // Today's sales performance
         $todaySales = Transaction::completed()->today()->sum('final_total');

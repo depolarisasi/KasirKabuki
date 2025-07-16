@@ -15,14 +15,6 @@ class StafController extends Controller
     }
     
     /**
-     * Display stock sate management page.
-     */
-    public function stockSate()
-    {
-        return view('staf.stock-sate.index');
-    }
-    
-    /**
      * Display expenses management page.
      */
     public function expenses()
@@ -250,6 +242,30 @@ class StafController extends Controller
                 $objDiscount->align = 0; // left
                 $objDiscount->format = 0; // normal
                 array_push($a, $objDiscount);
+            }
+            
+            // Tax (if any)
+            if ($transaction->tax_amount > 0) {
+                $taxLine = 'Pajak (' . $transaction->tax_rate . '%):' . str_repeat(' ', max(1, 32 - strlen('Pajak (' . $transaction->tax_rate . '%):') - strlen('Rp ' . number_format($transaction->tax_amount, 0, ',', '.')))) . 'Rp ' . number_format($transaction->tax_amount, 0, ',', '.');
+                $objTax = new \stdClass();
+                $objTax->type = 0; // text
+                $objTax->content = $taxLine;
+                $objTax->bold = 0;
+                $objTax->align = 0; // left
+                $objTax->format = 0; // normal
+                array_push($a, $objTax);
+            }
+            
+            // Service Charge (if any)
+            if ($transaction->service_charge_amount > 0) {
+                $serviceLine = 'Biaya Layanan (' . $transaction->service_charge_rate . '%):' . str_repeat(' ', max(1, 32 - strlen('Biaya Layanan (' . $transaction->service_charge_rate . '%):') - strlen('Rp ' . number_format($transaction->service_charge_amount, 0, ',', '.')))) . 'Rp ' . number_format($transaction->service_charge_amount, 0, ',', '.');
+                $objService = new \stdClass();
+                $objService->type = 0; // text
+                $objService->content = $serviceLine;
+                $objService->bold = 0;
+                $objService->align = 0; // left
+                $objService->format = 0; // normal
+                array_push($a, $objService);
             }
             
             // Total (Bold)

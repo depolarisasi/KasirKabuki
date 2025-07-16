@@ -102,14 +102,6 @@ class AdminController extends Controller
     }
 
     /**
-     * Display stock sate configuration page.
-     */
-    public function stockSateConfig()
-    {
-        return view('admin.config.stock-sate');
-    }
-
-    /**
      * Display reports index page.
      */
     public function reports()

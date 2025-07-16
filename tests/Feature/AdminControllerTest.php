@@ -93,11 +93,6 @@ class AdminControllerTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/reports/expenses');
         $response->assertStatus(200);
         $response->assertViewIs('admin.reports.expenses');
-        
-        // Test stock report
-        $response = $this->actingAs($admin)->get('/admin/reports/stock');
-        $response->assertStatus(200);
-        $response->assertViewIs('admin.reports.stock');
     }
 
     public function test_staff_cannot_access_admin_routes()

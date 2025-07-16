@@ -14,8 +14,9 @@ class ProductFactory extends Factory
     {
         return [
             'name' => $this->faker->randomElement([
-                'Sate Ayam', 'Sate Kambing', 'Sate Bebek', 'Nasi Gudeg',
-                'Es Teh Manis', 'Es Jeruk', 'Kopi Tubruk', 'Air Mineral'
+                'Ayam Bakar', 'Ayam Goreng', 'Rendang Daging', 'Nasi Gudeg',
+                'Gado-gado', 'Bakso', 'Soto Ayam', 'Nasi Goreng',
+                'Mie Ayam', 'Capcay', 'Pecel Lele', 'Ikan Bakar'
             ]),
             'price' => $this->faker->numberBetween(5000, 25000),
             'category_id' => Category::factory(),

@@ -33,7 +33,7 @@ class SalesReportSummarySheet implements FromArray, WithTitle, WithStyles, Shoul
         $period = $this->reportData['period'] ?? [];
         
         return [
-            ['LAPORAN PENJUALAN SATE BRAGA'],
+            ['LAPORAN PENJUALAN KASIRKABUKI'],
             [''],
             ['Periode', Carbon::parse($this->startDate)->format('d/m/Y') . ' - ' . Carbon::parse($this->endDate)->format('d/m/Y')],
             ['Dibuat pada', Carbon::now()->format('d/m/Y H:i')],

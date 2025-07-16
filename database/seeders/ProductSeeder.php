@@ -21,9 +21,9 @@ class ProductSeeder extends Seeder
 
         // Makanan Products
         $makananProducts = [
-            ['name' => 'Sate Ayam', 'price' => 25000, 'category_id' => $makananCategory->id],
-            ['name' => 'Sate Kambing', 'price' => 30000, 'category_id' => $makananCategory->id],
-            ['name' => 'Sate Sapi', 'price' => 28000, 'category_id' => $makananCategory->id],
+            ['name' => 'Ayam Bakar', 'price' => 25000, 'category_id' => $makananCategory->id],
+            ['name' => 'Ayam Goreng', 'price' => 22000, 'category_id' => $makananCategory->id],
+            ['name' => 'Rendang Daging', 'price' => 28000, 'category_id' => $makananCategory->id],
             ['name' => 'Nasi Putih', 'price' => 5000, 'category_id' => $makananCategory->id],
             ['name' => 'Lontong', 'price' => 7000, 'category_id' => $makananCategory->id],
             ['name' => 'Ketupat', 'price' => 7000, 'category_id' => $makananCategory->id],

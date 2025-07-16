@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-white mb-2">Dashboard Investor</h1>
-            <p class="text-white">Pantau performa bisnis Sate Braga</p>
+            <p class="text-white">Pantau performa bisnis KasirKabuki</p>
         </div>
         <div class="flex gap-2 mt-4 sm:mt-0">
             <div class="badge badge-primary">{{ auth()->user()->name }}</div>

@@ -16,7 +16,7 @@ class CategorySeeder extends Seeder
         $categories = [
             [
                 'name' => 'Makanan',
-                'description' => 'Kategori untuk semua jenis makanan termasuk sate dan lauk pauk',
+                'description' => 'Kategori untuk semua jenis makanan dan lauk pauk restoran',
             ],
             [
                 'name' => 'Minuman',

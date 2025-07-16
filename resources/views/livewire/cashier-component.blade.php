@@ -393,6 +393,24 @@
                                     <span>Total Diskon:</span>
                                     <span>-{{ 'Rp ' . number_format($cartData['total_discount'], 0, ',', '.') }}</span>
                                 </div>
+                                <div class="flex justify-between text-sm">
+                                    <span>Setelah Diskon:</span>
+                                    <span>{{ 'Rp ' . number_format($cartData['after_discount'] ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            @endif
+
+                            @if (($cartData['tax_amount'] ?? 0) > 0)
+                                <div class="flex justify-between text-sm text-info">
+                                    <span>Pajak ({{ number_format($cartData['tax_rate'] ?? 0, 1) }}%):</span>
+                                    <span>+{{ 'Rp ' . number_format($cartData['tax_amount'], 0, ',', '.') }}</span>
+                                </div>
+                            @endif
+
+                            @if (($cartData['service_charge_amount'] ?? 0) > 0)
+                                <div class="flex justify-between text-sm text-accent">
+                                    <span>Service Charge ({{ number_format($cartData['service_charge_rate'] ?? 0, 1) }}%):</span>
+                                    <span>+{{ 'Rp ' . number_format($cartData['service_charge_amount'], 0, ',', '.') }}</span>
+                                </div>
                             @endif
 
                             @if ($orderType === 'online' && $selectedPartner && ($cartData['commission'] ?? 0) > 0)
@@ -684,6 +702,24 @@
                                 <div class="flex justify-between text-warning">
                                     <span>Total Diskon:</span>
                                     <span>-{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['total_discount'] ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Setelah Diskon:</span>
+                                    <span>{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['after_discount'] ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            @endif
+
+                            @if (($checkoutSummary['cart_totals']['tax_amount'] ?? 0) > 0)
+                                <div class="flex justify-between text-info">
+                                    <span>Pajak ({{ number_format($checkoutSummary['cart_totals']['tax_rate'] ?? 0, 1) }}%):</span>
+                                    <span>+{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['tax_amount'] ?? 0, 0, ',', '.') }}</span>
+                                </div>
+                            @endif
+
+                            @if (($checkoutSummary['cart_totals']['service_charge_amount'] ?? 0) > 0)
+                                <div class="flex justify-between text-accent">
+                                    <span>Service Charge ({{ number_format($checkoutSummary['cart_totals']['service_charge_rate'] ?? 0, 1) }}%):</span>
+                                    <span>+{{ 'Rp ' . number_format($checkoutSummary['cart_totals']['service_charge_amount'] ?? 0, 0, ',', '.') }}</span>
                                 </div>
                             @endif
 

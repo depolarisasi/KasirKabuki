@@ -15,41 +15,43 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Roles first (check if exists)
+        // Create Roles first (check if exists) - Original 3-tier system
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $stafRole = Role::firstOrCreate(['name' => 'staf']);
         $investorRole = Role::firstOrCreate(['name' => 'investor']);
 
-        // Create Admin User (check if exists)
-        $adminUser = User::firstOrCreate(
-            ['email' => 'admin@satebraga.com'],
+        // Create Admin User
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@kasirkabuki.com'],
             [
-                'name' => 'Admin Sate Braga',
+                'name' => 'Admin KasirKabuki',
+                'email' => 'admin@kasirkabuki.com',
                 'password' => Hash::make('admin123'),
-                'role' => 'admin', // Keep for backward compatibility
+                'role' => 'admin',
+                'pin' => '1234',
                 'email_verified_at' => now(),
+                'is_active' => true,
             ]
         );
-        
-        // Assign admin role to admin user (if not already assigned)
-        if (!$adminUser->hasRole('admin')) {
-            $adminUser->assignRole('admin');
-        }
 
-        // Create Staff User (check if exists)
-        $stafUser = User::firstOrCreate(
-            ['email' => 'kasir@satebraga.com'],
+        // Assign Spatie Permission role to admin
+        $admin->assignRole($adminRole);
+
+        // Create Kasir User (using staf role - consistent with original 3-tier system)
+        $kasir = User::updateOrCreate(
+            ['email' => 'kasir@kasirkabuki.com'],
             [
-                'name' => 'Kasir Sate Braga',
+                'name' => 'Kasir KasirKabuki',
+                'email' => 'kasir@kasirkabuki.com',
                 'password' => Hash::make('kasir123'),
-                'role' => 'staf', // Keep for backward compatibility
+                'role' => 'staf', // Use 'staf' role instead of 'kasir'
+                'pin' => '5678',
                 'email_verified_at' => now(),
+                'is_active' => true,
             ]
         );
-        
-        // Assign staf role to staff user (if not already assigned)
-        if (!$stafUser->hasRole('staf')) {
-            $stafUser->assignRole('staf');
-        }
+
+        // Assign Spatie Permission role to kasir (as staf)
+        $kasir->assignRole($stafRole);
     }
 }

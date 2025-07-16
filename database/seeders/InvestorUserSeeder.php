@@ -14,28 +14,25 @@ class InvestorUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Test Investor User (check if exists)
-        $investor = User::firstOrCreate(
-            ['email' => 'investor@satebraga.com'],
+        // Create Investor User
+        $investor = User::updateOrCreate(
+            ['email' => 'investor@kasirkabuki.com'],
             [
-                'name' => 'Test Investor',
+                'name' => 'Investor KasirKabuki',
+                'email' => 'investor@kasirkabuki.com',
                 'password' => Hash::make('investor123'),
                 'role' => 'investor',
-                'is_active' => true,
-                'pin' => '123456',
                 'email_verified_at' => now(),
+                'is_active' => true,
             ]
         );
-        
-        // Assign investor role (if not already assigned)
+
+        // Assign investor role to user
         if (!$investor->hasRole('investor')) {
             $investor->assignRole('investor');
         }
 
-        echo "Test Investor User Created:\n";
-        echo "Email: investor@satebraga.com\n";
-        echo "Password: investor123\n";
-        echo "PIN: 123456\n";
-        echo "Role: " . $investor->roles->pluck('name')->implode(', ') . "\n";
+        echo "✅ Investor user seeded successfully!\n";
+        echo "Email: investor@kasirkabuki.com\n";
     }
 }

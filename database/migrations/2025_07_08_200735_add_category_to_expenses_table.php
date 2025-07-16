@@ -14,14 +14,13 @@ return new class extends Migration
         Schema::table('expenses', function (Blueprint $table) {
             $table->enum('category', [
                 'gaji',
-                'bahan_baku_sate', 
                 'bahan_baku_makanan_lain',
                 'listrik',
                 'air',
                 'gas',
                 'promosi_marketing',
-                'pemeliharaan_alat'
-            ])->after('description')->comment('Kategori pengeluaran bisnis sate');
+                'pemeliharaan_alat',
+            ])->after('description')->comment('Kategori pengeluaran bisnis restoran');
             
             $table->index(['category', 'date']);
         });

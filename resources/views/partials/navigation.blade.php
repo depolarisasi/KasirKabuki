@@ -82,14 +82,6 @@
                         <span class="dock-label">Kasir</span>
                     </a>
 
-                    <a href="{{ route('staf.stock-sate') }}" 
-                       class="@if(request()->routeIs('staf.stock*')) dock-active @endif">
-                        <svg class="size-[1.2em]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                        <span class="dock-label">Stok</span>
-                    </a>
-
                     <a href="{{ route('staf.expenses') }}" 
                        class="@if(request()->routeIs('staf.expenses*')) dock-active @endif">
                         <svg class="size-[1.2em]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,7 +164,6 @@
                                     </summary>
                                     <ul class="p-2 bg-base-100 rounded-box w-52">
                                         <li><a href="{{ route('admin.reports.sales') }}">Penjualan</a></li>
-                                        <li><a href="{{ route('admin.config.stock-sate') }}">Stok Sate</a></li>
                                         <li><a href="{{ route('admin.reports.expenses') }}">Pengeluaran</a></li>
                                     </ul>
                                 </details>
@@ -188,15 +179,6 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m4.5 0a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4z"></path>
                                     </svg>
                                     Kasir
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('staf.stock-sate') }}" 
-                                   class="@if(request()->routeIs('staf.stock*')) active @endif">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                    </svg>
-                                    Stok
                                 </a>
                             </li>
                             <li>

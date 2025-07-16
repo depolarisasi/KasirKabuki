@@ -354,6 +354,10 @@
             'totals' => [
                 'subtotal' => $transaction->subtotal,
                 'discount' => $transaction->total_discount,
+                'tax_amount' => $transaction->tax_amount,
+                'tax_rate' => $transaction->tax_rate,
+                'service_charge_amount' => $transaction->service_charge_amount,
+                'service_charge_rate' => $transaction->service_charge_rate,
                 'final' => $transaction->final_total,
             ],
             'payment' => [
@@ -392,16 +396,29 @@
         </div>
     @endforeach
     <hr>
+    <div style="display:flex; justify-content:space-between;">
+        <span>Subtotal:</span>
+        <span>Rp. {{ number_format($dataForJs['totals']['subtotal'], 0, ',', '.') }}</span>
+    </div>
     @if($dataForJs['totals']['discount'] > 0)
-        <div style="display:flex; justify-content:space-between;">
-            <span>Subtotal:</span>
-            <span>Rp. {{ number_format($dataForJs['totals']['subtotal'], 0, ',', '.') }}</span>
-        </div>
         <div style="display:flex; justify-content:space-between;">
             <span>Diskon:</span>
             <span>-Rp. {{ number_format($dataForJs['totals']['discount'], 0, ',', '.') }}</span>
         </div>
     @endif
+    @if($dataForJs['totals']['tax_amount'] > 0)
+        <div style="display:flex; justify-content:space-between;">
+            <span>Pajak ({{ $dataForJs['totals']['tax_rate'] }}%):</span>
+            <span>Rp. {{ number_format($dataForJs['totals']['tax_amount'], 0, ',', '.') }}</span>
+        </div>
+    @endif
+    @if($dataForJs['totals']['service_charge_amount'] > 0)
+        <div style="display:flex; justify-content:space-between;">
+            <span>Biaya Layanan ({{ $dataForJs['totals']['service_charge_rate'] }}%):</span>
+            <span>Rp. {{ number_format($dataForJs['totals']['service_charge_amount'], 0, ',', '.') }}</span>
+        </div>
+    @endif
+    <hr>
     <div style="display:flex; justify-content:space-between; font-weight:bold;">
         <span>Total:</span>
         <span>Rp. {{ number_format($dataForJs['totals']['final'], 0, ',', '.') }}</span>

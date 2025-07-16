@@ -18,13 +18,13 @@ class ProductTest extends TestCase
         $category = Category::create(['name' => 'Test Category']);
         
         $product = Product::create([
-            'name' => 'Sate Ayam',
+            'name' => 'Ayam Bakar',
             'price' => 15000,
             'category_id' => $category->id
         ]);
 
         $this->assertInstanceOf(Product::class, $product);
-        $this->assertEquals('Sate Ayam', $product->name);
+        $this->assertEquals('Ayam Bakar', $product->name);
         $this->assertEquals(15000, $product->price);
         $this->assertEquals($category->id, $product->category_id);
     }

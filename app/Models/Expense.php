@@ -27,14 +27,13 @@ class Expense extends Model
     public static function getCategoryLabels()
     {
         return [
-            'gaji' => 'Gaji',
-            'bahan_baku_sate' => 'Bahan Baku Sate',
-            'bahan_baku_makanan_lain' => 'Bahan Baku Makanan Lain',
+            'gaji' => 'Gaji Karyawan',
+            'bahan_baku_makanan_lain' => 'Bahan Baku Makanan',
             'listrik' => 'Listrik',
             'air' => 'Air',
             'gas' => 'Gas',
-            'promosi_marketing' => 'Promosi / Marketing',
-            'pemeliharaan_alat' => 'Pemeliharaan Alat'
+            'promosi_marketing' => 'Promosi & Marketing',
+            'pemeliharaan_alat' => 'Pemeliharaan Alat',
         ];
     }
 
@@ -230,8 +229,7 @@ class Expense extends Model
     {
         $badges = [
             'gaji' => 'badge-primary',
-            'bahan_baku_sate' => 'badge-secondary',
-            'bahan_baku_makanan_lain' => 'badge-accent',
+            'bahan_baku_makanan_lain' => 'badge-secondary',
             'listrik' => 'badge-warning',
             'air' => 'badge-info',
             'gas' => 'badge-error',

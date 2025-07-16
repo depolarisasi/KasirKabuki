@@ -19,6 +19,10 @@ class Transaction extends Model
         'partner_id',
         'subtotal',
         'total_discount',
+        'tax_amount',
+        'tax_rate',
+        'service_charge_amount',
+        'service_charge_rate',
         'partner_commission',
         'final_total',
         'payment_method',
@@ -33,6 +37,10 @@ class Transaction extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'total_discount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'service_charge_amount' => 'decimal:2',
+        'service_charge_rate' => 'decimal:2',
         'partner_commission' => 'decimal:2',
         'final_total' => 'decimal:2',
         'discount_details' => 'array',
@@ -193,6 +201,16 @@ class Transaction extends Model
     public function getFormattedTotalDiscountAttribute()
     {
         return 'Rp ' . number_format($this->total_discount, 0, ',', '.');
+    }
+
+    public function getFormattedTaxAmountAttribute()
+    {
+        return 'Rp ' . number_format($this->tax_amount, 0, ',', '.');
+    }
+
+    public function getFormattedServiceChargeAmountAttribute()
+    {
+        return 'Rp ' . number_format($this->service_charge_amount, 0, ',', '.');
     }
 
     public function getFormattedPartnerCommissionAttribute()

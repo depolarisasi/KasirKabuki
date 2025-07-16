@@ -315,6 +315,18 @@
                 </div>
             @endif
             
+            @if($transaction->tax_amount > 0)
+                <div class="total-row">
+                    <span style="text-align: right; width: 100%; display: block;">Pajak ({{ $transaction->tax_rate }}%): Rp. {{ number_format($transaction->tax_amount, 0, ',', '.') }}</span>
+                </div>
+            @endif
+            
+            @if($transaction->service_charge_amount > 0)
+                <div class="total-row">
+                    <span style="text-align: right; width: 100%; display: block;">Biaya Layanan ({{ $transaction->service_charge_rate }}%): Rp. {{ number_format($transaction->service_charge_amount, 0, ',', '.') }}</span>
+                </div>
+            @endif
+            
             <div class="total-row final">
                 <span style="text-align: right; width: 100%; display: block;">Total: Rp. {{ number_format($transaction->final_total, 0, ',', '.') }}</span>
             </div>

@@ -72,30 +72,31 @@ class ProductComponent extends Model
 
     /**
      * Check apakah component product punya stock cukup untuk package quantity
+     * KasirKabuki tidak menggunakan stock management - selalu return true
      */
     public function hasEnoughComponentStock($packageQuantity)
     {
-        $requiredQuantity = $this->calculateTotalComponentQuantity($packageQuantity);
-        $currentStock = $this->componentProduct->getCurrentStock();
-        
-        return $currentStock >= $requiredQuantity;
+        // KasirKabuki tidak menggunakan stock management
+        // Semua component dianggap selalu tersedia
+        return true;
     }
 
     /**
      * Get component stock status untuk package
+     * KasirKabuki tidak menggunakan stock management - return simplified status
      */
     public function getComponentStockStatus($packageQuantity = 1)
     {
         $requiredQuantity = $this->calculateTotalComponentQuantity($packageQuantity);
-        $currentStock = $this->componentProduct->getCurrentStock();
         
         return [
             'component_name' => $this->componentProduct->name,
             'required_quantity' => $requiredQuantity,
-            'current_stock' => $currentStock,
-            'is_sufficient' => $currentStock >= $requiredQuantity,
-            'shortage' => max(0, $requiredQuantity - $currentStock),
-            'unit' => $this->unit
+            'current_stock' => null, // Tidak ada stock tracking
+            'is_sufficient' => true, // Selalu cukup
+            'shortage' => 0, // Tidak ada shortage
+            'unit' => $this->unit,
+            'stock_management_enabled' => false
         ];
     }
 }

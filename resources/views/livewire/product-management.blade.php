@@ -55,7 +55,6 @@
                             <th>Nama Produk</th>
                             <th>Kategori</th>
                             <th>Harga</th>
-                            <th>Info Sate</th>
                             <th>Tanggal Dibuat</th>
                             <th>Aksi</th>
                         </tr>
@@ -104,22 +103,6 @@
                                         Rp {{ number_format($product->price, 0, ',', '.') }}
                                     </div>
                                 </td>
-                                <td>
-                                    @if($product->jenis_sate)
-                                        <div class="flex flex-col gap-1">
-                                            <div class="badge badge-success badge-sm">
-                                                🍖 {{ $product->jenis_sate }}
-                                            </div>
-                                            @if($product->quantity_effect)
-                                                <div class="text-xs text-gray-600">
-                                                    {{ $product->quantity_effect }} tusuk/unit
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @else
-                                        <div class="text-xs text-gray-500">-</div>
-                                    @endif
-                                </td>
                                 <td>{{ $product->created_at->format('d/m/Y H:i') }}</td>
                                 <td>
                                     <div class="flex gap-2">
@@ -146,7 +129,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-8">
+                                <td colspan="6" class="text-center py-8">
                                     <div class="flex flex-col items-center">
                                         <svg class="w-12 h-12 text-base-content/30 mb-2" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">
@@ -267,50 +250,6 @@
                                 <span class="label-text-alt">JPG, PNG, max 2MB</span>
                             </label>
                         </div>
-
-                        <!-- Jenis Sate Field -->
-                        <div class="form-control w-full">
-                            <label class="label">
-                                <span class="label-text">Jenis Sate</span>
-                            </label>
-                            <select wire:model.live="jenis_sate"
-                                class="select select-bordered w-full @error('jenis_sate') select-error @enderror">
-                                <option value="">Bukan Produk Sate</option>
-                                @foreach ($this->getJenisSateOptions() as $option)
-                                    <option value="{{ $option }}">{{ $option }}</option>
-                                @endforeach
-                            </select>
-                            @error('jenis_sate')
-                                <label class="label">
-                                    <span class="label-text-alt text-error">{{ $message }}</span>
-                                </label>
-                            @enderror
-                            <label class="label">
-                                <span class="label-text-alt">Pilih jenis sate untuk tracking stok otomatis</span>
-                            </label>
-                        </div>
-
-                        <!-- Quantity Effect Field (conditionally shown) -->
-                        @if($this->isSateProduct())
-                            <div class="form-control w-full">
-                                <label class="label">
-                                    <span class="label-text">Jumlah Sate Per Unit</span>
-                                </label>
-                                <div class="relative">
-                                    <input wire:model="quantity_effect" type="number" min="1" max="999" placeholder="Contoh: 10 untuk paket 10 tusuk"
-                                        class="input input-bordered w-full @error('quantity_effect') input-error @enderror" />
-                                    <span class="absolute right-3 top-3 text-base-content/70">tusuk</span>
-                                </div>
-                                @error('quantity_effect')
-                                    <label class="label">
-                                        <span class="label-text-alt text-error">{{ $message }}</span>
-                                    </label>
-                                @enderror
-                                <label class="label">
-                                    <span class="label-text-alt">Berapa tusuk sate yang dihasilkan dari 1 unit produk ini?</span>
-                                </label>
-                            </div>
-                        @endif
                     </div>
 
                     <!-- Photo Preview Section -->

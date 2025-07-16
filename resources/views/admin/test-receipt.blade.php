@@ -191,7 +191,7 @@
             @endif
             
             <div class="store-name">
-                {{ request('store_name', 'SATE BRAGA') }}
+                {{ request('store_name', 'KABUKI JAPANESE FOOD') }}
             </div>
             
             @if(request('store_address'))

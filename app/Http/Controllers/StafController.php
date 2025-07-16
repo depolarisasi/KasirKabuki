@@ -83,7 +83,7 @@ class StafController extends Controller
             
             // Get payment amount from request
             $paymentAmount = request()->input('payment_amount', $transaction->final_total);
-            $kembalian = $transaction->payment_method === 'qris' ? 0 : max(0, $paymentAmount - $transaction->final_total);
+            $kembalian = in_array($transaction->payment_method, ['qris', 'aplikasi']) ? 0 : max(0, $paymentAmount - $transaction->final_total);
             
             // Build array for Bluetooth Print app (following the exact format from instructions)
             $a = array();

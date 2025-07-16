@@ -347,7 +347,7 @@
         // 1. Kumpulkan semua data yang dibutuhkan oleh JavaScript
         $storeSettings = \App\Models\StoreSetting::current();
         $paymentAmount = request()->input('payment_amount', $transaction->final_total);
-        $kembalian = $transaction->payment_method === 'qris' ? 0 : max(0, $paymentAmount - $transaction->final_total);
+        $kembalian = in_array($transaction->payment_method, ['qris', 'aplikasi']) ? 0 : max(0, $paymentAmount - $transaction->final_total);
 
         $dataForJs = [
             'store' => [

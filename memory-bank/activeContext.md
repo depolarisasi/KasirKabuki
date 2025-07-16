@@ -17,6 +17,8 @@
 - **Partner Tax-Free Implementation**: Implemented conditional tax/service charge logic untuk partner orders
 - **TransactionService Enhanced**: Updated getCartTotals(), getCheckoutSummary(), completeTransaction()
 - **UI Components Updated**: CashierComponent, receipt templates, Android print logic
+- **Receipt Consistency Fixed**: Resolved inkonsistensi data antara web receipt dan Android Bluetooth print
+- **Payment Method Logic Unified**: Fixed kembalian display logic untuk QRIS dan Aplikasi payment methods
 - **Proper Totals Display**: Subtotal → Discount → Tax → Service Charge → Final Total sequence
 - **Consistent Formatting**: Tax dan service charge properly formatted dengan percentage rates
 - **Conditional Display**: Tax dan service charge hanya ditampilkan jika amount > 0
@@ -42,6 +44,8 @@
 - ✅ **CashierComponent Method Error**: Fixed "Method info does not exist" error
 - ✅ **Partner Tax Double Charging**: Online orders dengan partner sekarang tax-free
 - ✅ **Business Logic Consistency**: Proper tax/service charge rules berdasarkan order type
+- ✅ **Receipt Data Inconsistency**: Fixed perbedaan data antara web receipt dan Android print
+- ✅ **Payment Method Logic**: Unified kembalian handling untuk QRIS dan Aplikasi methods
 - ✅ **Customer Receipt Transparency**: Customer dapat melihat breakdown biaya dengan jelas
 - ✅ **Audit Trail Complete**: All receipt formats consistent dengan database tax/service data
 

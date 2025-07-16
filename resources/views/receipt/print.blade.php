@@ -327,7 +327,7 @@
         // 1. Kumpulkan semua data yang dibutuhkan oleh JavaScript
         $storeSettings = \App\Models\StoreSetting::current();
         $paymentAmount = request()->input('payment_amount', $transaction->final_total);
-        $kembalian = $transaction->payment_method === 'qris' ? 0 : max(0, $paymentAmount - $transaction->final_total);
+        $kembalian = in_array($transaction->payment_method, ['qris', 'aplikasi']) ? 0 : max(0, $paymentAmount - $transaction->final_total);
 
         $dataForJs = [
             'store' => [
@@ -427,7 +427,7 @@
         <span>Bayar ({{ $dataForJs['payment']['method'] }}):</span>
         <span>Rp. {{ number_format($dataForJs['payment']['amount'], 0, ',', '.') }}</span>
     </div>
-    @if($dataForJs['payment']['change'] > 0)
+    @if($transaction->payment_method === 'cash' && $dataForJs['payment']['change'] > 0)
         <div style="display:flex; justify-content:space-between;">
             <span>Kembalian:</span>
             <span>Rp. {{ number_format($dataForJs['payment']['change'], 0, ',', '.') }}</span>

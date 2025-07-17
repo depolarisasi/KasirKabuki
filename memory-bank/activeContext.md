@@ -1,6 +1,7 @@
 # Active Context
 
 ## Current Focus
+- **PHP 8.0 Compatibility Fixed**: Resolved nested ternary operator syntax error dalam cashier component
 - **3-Tier Role System Consistency Restored**: Reverted back to original clean architecture
 - **Role Inconsistency Fixed**: Removed 'kasir' role, kasir users now properly use 'staf' role
 - **Receipt Template Enhanced**: Added tax & service charge breakdown to all receipt templates
@@ -9,6 +10,8 @@
 - **Partner Tax-Free Logic Implemented**: Online orders dengan partner tidak dikenakan tax & service charge
 
 ## Recent Changes
+- **PHP Ternary Operator Fix**: Fixed nested ternary operator di cashier-component.blade.php line 753 dengan proper parentheses untuk PHP 8.0+ compatibility
+- **Cache Clearing**: Cleared config, route, dan view cache untuk ensure fix takes effect
 - **Enhanced Receipt Templates**: Updated receipt print templates untuk include tax dan service charge
 - **Android Print Integration**: Added tax dan service charge ke JSON output untuk Bluetooth printing
 - **Test Receipt Updated**: Test print template now shows tax dan service charge breakdown

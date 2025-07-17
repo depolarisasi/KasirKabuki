@@ -751,7 +751,7 @@
                     <label class="label">
                         <span class="label-text font-semibold">Metode Pembayaran</span>
                     </label>
-                    <div class="grid {{ ($orderType === 'online' && !$selectedPartner) ? 'grid-cols-3' : ($orderType === 'online' && $selectedPartner) ? 'grid-cols-1' : 'grid-cols-2' }} gap-3">
+                    <div class="grid {{ ($orderType === 'online' && !$selectedPartner) ? 'grid-cols-3' : (($orderType === 'online' && $selectedPartner) ? 'grid-cols-1' : 'grid-cols-2') }} gap-3">
                         
                         {{-- Hide Tunai for online orders with partner --}}
                         @if (!($orderType === 'online' && $selectedPartner))

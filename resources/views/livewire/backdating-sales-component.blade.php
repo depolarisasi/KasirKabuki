@@ -468,9 +468,20 @@
                         <span class="label-text font-medium">Metode Pembayaran</span>
                     </label>
                     <select wire:model.live="paymentMethod" class="select select-bordered w-full">
-                        <option value="cash">Tunai (Cash)</option>
-                        <option value="qris">QRIS</option>
-                        <option value="aplikasi">Aplikasi (GoPay/OVO/Dana)</option>
+                        {{-- Hide Tunai for online orders with partner --}}
+                        @if (!($orderType === 'online' && $selectedPartner))
+                            <option value="cash">Tunai (Cash)</option>
+                        @endif
+                        
+                        {{-- Hide QRIS for online orders with partner --}}
+                        @if (!($orderType === 'online' && $selectedPartner))
+                            <option value="qris">QRIS</option>
+                        @endif
+                        
+                        {{-- Show Aplikasi only for online orders --}}
+                        @if ($orderType === 'online')
+                            <option value="aplikasi">Aplikasi (GoPay/OVO/Dana)</option>
+                        @endif
                     </select>
                 </div>
 

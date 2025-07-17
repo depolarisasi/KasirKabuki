@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,9 +12,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            //
-        });
+        // Alter the enum column to add 'aplikasi'
+        DB::statement("ALTER TABLE transactions MODIFY COLUMN payment_method ENUM('cash', 'qris', 'aplikasi')");
     }
 
     /**
@@ -21,8 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            //
-        });
+        // Revert back to original enum values
+        DB::statement("ALTER TABLE transactions MODIFY COLUMN payment_method ENUM('cash', 'qris')");
     }
 };

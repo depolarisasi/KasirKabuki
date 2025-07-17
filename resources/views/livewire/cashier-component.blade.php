@@ -751,35 +751,43 @@
                     <label class="label">
                         <span class="label-text font-semibold">Metode Pembayaran</span>
                     </label>
-                    <div class="grid {{ $orderType === 'online' ? 'grid-cols-3' : 'grid-cols-2' }} gap-3">
-                        <label
-                            class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'cash' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
-                            <div class="flex items-center space-x-3">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
-                                    </path>
-                                </svg>
-                                <span class="font-semibold">Tunai</span>
-                            </div>
-                            <input wire:model.live="paymentMethod" type="radio" value="cash"
-                                class="radio radio-primary" />
-                        </label>
+                    <div class="grid {{ ($orderType === 'online' && !$selectedPartner) ? 'grid-cols-3' : ($orderType === 'online' && $selectedPartner) ? 'grid-cols-1' : 'grid-cols-2' }} gap-3">
+                        
+                        {{-- Hide Tunai for online orders with partner --}}
+                        @if (!($orderType === 'online' && $selectedPartner))
+                            <label
+                                class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'cash' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                                        </path>
+                                    </svg>
+                                    <span class="font-semibold">Tunai</span>
+                                </div>
+                                <input wire:model.live="paymentMethod" type="radio" value="cash"
+                                    class="radio radio-primary" />
+                            </label>
+                        @endif
 
-                        <label
-                            class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'qris' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
-                            <div class="flex items-center space-x-3">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                                <span class="font-semibold">QRIS</span>
-                            </div>
-                            <input wire:model.live="paymentMethod" type="radio" value="qris"
-                                class="radio radio-primary" />
-                        </label>
+                        {{-- Hide QRIS for online orders with partner --}}
+                        @if (!($orderType === 'online' && $selectedPartner))
+                            <label
+                                class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'qris' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                    <span class="font-semibold">QRIS</span>
+                                </div>
+                                <input wire:model.live="paymentMethod" type="radio" value="qris"
+                                    class="radio radio-primary" />
+                            </label>
+                        @endif
 
+                        {{-- Show Aplikasi only for online orders --}}
                         @if ($orderType === 'online')
                             <label
                                 class="label cursor-pointer border rounded-lg p-3 {{ $paymentMethod === 'aplikasi' ? 'border-primary bg-primary/10' : 'border-base-300' }}">
